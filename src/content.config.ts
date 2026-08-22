@@ -36,7 +36,7 @@ const projects = defineCollection({
 			imagePosition: z.enum(['top', 'center', 'bottom']).default('center'),
 			// In-progress projects stay reachable by direct link (with a WIP notice)
 			// but are excluded from listings.
-			published: z.boolean().default(true),
+			inProgress: z.boolean().default(false),
 		}),
 });
 
