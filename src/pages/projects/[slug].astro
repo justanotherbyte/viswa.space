@@ -31,7 +31,11 @@ const positionClass = {
 const heroClass = `w-full max-h-96 object-cover ${positionClass} rounded-sm mb-4`;
 ---
 
-<SiteLayout title={`${title} | ${SITE_TITLE}`} description={description}>
+<SiteLayout
+	title={`${title} | ${SITE_TITLE}`}
+	description={description}
+	image={image}
+>
 	<link
 		rel="stylesheet"
 		href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css"
@@ -48,10 +52,10 @@ const heroClass = `w-full max-h-96 object-cover ${positionClass} rounded-sm mb-4
 				<Image src={image} alt={title} width={1200} class={heroClass} />
 			)
 		}
+		<h1 class="dark:text-white text-lg font-semibold mt-2 mb-3">{title}</h1>
 		<p class="text-zinc-600 dark:text-zinc-400 text-sm">
 			<FormattedDate date={date} /> · {readingTime(project.body ?? "")}
 		</p>
-		<h1 class="dark:text-white text-lg font-semibold mt-2 mb-3">{title}</h1>
 		{
 			inProgress && (
 				<p class="text-zinc-600 dark:text-zinc-400 text-xs">
