@@ -1,0 +1,41 @@
+---
+import { type CollectionEntry, getCollection, render } from 'astro:content';
+import SiteLayout from '../../layouts/SiteLayout.astro';
+import { SITE_TITLE } from '../../consts';
+
+export async function getStaticPaths() {
+	const posts = await getCollection('blog');
+	return posts.map((post) => ({
+		params: { slug: post.id },
+		props: post,
+	}));
+}
+
+type Props = CollectionEntry<'blog'>;
+
+const post = Astro.props;
+const { title, description, published } = post.data;
+const { Content } = await render(post);
+---
+
+<SiteLayout title={`${title} | ${SITE_TITLE}`} description={description}>
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/tokyo-night-dark.min.css" />
+	<div>
+		<h1 class="dark:text-white text-lg font-semibold mb-2">{title}</h1>
+		{
+			!published && (
+				<p class="text-zinc-600 dark:text-zinc-400 text-sm italic">
+					⚠️ This article is a work in progress and may contain errors.
+				</p>
+			)
+		}
+		<hr class="my-4 h-0.5 border-t-0 bg-zinc-300 dark:bg-white/10" />
+		<div class="flow-root dark:text-white [&>*]:mb-4 [&_img:not(.float-image)]:mx-auto [&_h3]:underline [&_ul]:ml-3 [&_ul]:list-disc [&_a]:text-blue-400 [&_a]:hover:text-blue-600 [&>h1]:text-xl [&>h1]:font-bold [&>h1]:clear-both [&>h2]:text-lg [&>h2]:font-semibold [&>h2]:clear-both [&>p]:dark:text-zinc-300 [&>p]:text-zinc-600">
+			<Content />
+		</div>
+	</div>
+	<script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+	<script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/verilog.min.js"></script>
+	<script is:inline>hljs.highlightAll();</script>
+</SiteLayout>

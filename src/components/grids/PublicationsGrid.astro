@@ -1,0 +1,29 @@
+---
+import { getCollection } from 'astro:content';
+import Section from '../Section.astro';
+import BlogCard from '../cards/BlogCard.astro';
+
+const recent = (await getCollection('blog', ({ data }) => data.published))
+	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+	.slice(0, 4);
+---
+
+<Section id="publications" name="Publications" moreInfo="/publications">
+	{
+		recent.length > 0 ? (
+			<div class="grid md:grid-cols-4 gap-x-2 sm:grid-cols-1 md:gap-y-0 gap-y-2">
+				{recent.map((post) => (
+					<BlogCard
+						name={post.data.title}
+						description={post.data.description}
+						slug={post.id}
+					/>
+				))}
+			</div>
+		) : (
+			<p class="text-zinc-500 dark:text-zinc-400 text-sm italic">
+				No publications yet — add some to src/content/blog.
+			</p>
+		)
+	}
+</Section>

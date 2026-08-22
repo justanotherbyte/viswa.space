@@ -1,0 +1,33 @@
+---
+interface Props {
+	position: string;
+	company: string;
+	companyLink: string;
+	startDate: string;
+	endDate: string;
+	companyLogo: string;
+	description: string;
+}
+
+const { position, company, companyLink, startDate, endDate, companyLogo, description } = Astro.props;
+---
+
+<div class="flex flex-col bg-zinc-100 dark:bg-zinc-800 rounded-none p-4 border border-zinc-300 dark:border-zinc-700 gap-y-2">
+	<div class="flex flex-row gap-x-3">
+		<a href={companyLink} target="_blank">
+			<img class="rounded-sm w-15 h-auto" src={companyLogo} alt={company} />
+		</a>
+		<div>
+			<a
+				href={companyLink}
+				target="_blank"
+				class="dark:text-white hover:underline active:text-zinc-400 duration-200"
+			>
+				{position} @ {company}
+			</a>
+
+			<p class="text-zinc-400">{startDate} - {endDate}.</p>
+		</div>
+	</div>
+	<p class="text-zinc-600 dark:text-zinc-400 whitespace-pre-line">{description}</p>
+</div>

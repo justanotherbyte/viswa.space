@@ -1,0 +1,69 @@
+---
+import { Image } from 'astro:assets';
+import Section from '../Section.astro';
+import pythonLogo from '../../assets/python.png';
+import rustLogo from '../../assets/rust-lang.png';
+import typescriptLogo from '../../assets/typescript.png';
+import googleJaxLogo from '../../assets/google-jax.png';
+import postgresLogo from '../../assets/postgres.png';
+
+const technologies = [
+	{
+		name: 'Python',
+		description:
+			"This is the language I'm the most proficient in. I do my Machine Learning and Data Science work in Python.",
+		image: pythonLogo,
+	},
+	{
+		name: 'Rust',
+		description:
+			'I do a lot of embedded development in Rust and also on the web using the Axum framework.',
+		image: rustLogo,
+	},
+	{
+		name: 'TypeScript',
+		description:
+			'I recently picked up TypeScript during my internship at Autumn. I plan on using it for my future general web development needs.',
+		image: typescriptLogo,
+	},
+	{
+		name: 'Google JAX',
+		description:
+			'I began experimenting with Google JAX and loved its NumPy-esque syntax and power to easily scale up numerical operations.',
+		image: googleJaxLogo,
+	},
+	{
+		name: 'SystemVerilog',
+		description:
+			"I've recently begun learning SystemVerilog in an effort to explore FPGA technology and Hardware Verification. I promise, its not a latch...",
+		// SVG — Astro's Image optimization pipeline has nothing to gain here.
+		svgUrl: '/systemverilog.svg',
+	},
+	{
+		name: 'PostgreSQL',
+		description:
+			'PostgreSQL is my database of choice for all of my recent projects, though I have begun to check out Convex.',
+		image: postgresLogo,
+	},
+];
+---
+
+<Section id="stack" name="Stack">
+	<div class="grid md:grid-cols-2 sm:grid-cols-1 gap-2">
+		{
+			technologies.map((tech) => (
+				<div class="flex flex-row items-center bg-zinc-100 dark:bg-zinc-800 rounded-none p-4 border border-zinc-300 dark:border-zinc-700">
+					{tech.image ? (
+						<Image src={tech.image} alt={tech.name} class="w-auto h-16 mr-4 duration-200" width={200} />
+					) : (
+						<img src={tech.svgUrl} alt={tech.name} class="w-auto h-16 mr-4 duration-200" width="200" height="200" />
+					)}
+					<div>
+						<h3 class="text-lg font-bold dark:text-white">{tech.name}</h3>
+						<p class="text-zinc-600 dark:text-zinc-400">{tech.description}</p>
+					</div>
+				</div>
+			))
+		}
+	</div>
+</Section>

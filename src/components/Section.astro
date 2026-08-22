@@ -1,0 +1,46 @@
+---
+interface Props {
+	id: string;
+	name: string;
+	moreInfo?: string;
+	description?: string;
+}
+
+const { id, name, moreInfo, description } = Astro.props;
+---
+
+<section id={id}>
+	<div class="relative flex w-full">
+		<h1 class="dark:text-white text-xl">{name}</h1>
+		{
+			moreInfo && (
+				<a
+					href={moreInfo}
+					class="dark:text-white absolute right-0 text-xl hover:text-zinc-400 duration-200 transition"
+				>
+					View All
+					<svg
+						class="inline"
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
+					</svg>
+				</a>
+			)
+		}
+	</div>
+	<hr class="my-4 h-0.5 border-t-0 bg-zinc-300 dark:bg-white/10" />
+	{
+		description && (
+			<p class="text-zinc-600 dark:text-zinc-400 mt-1 mb-6">{description}</p>
+		)
+	}
+	<slot />
+</section>

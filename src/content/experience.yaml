@@ -1,0 +1,46 @@
+# Work experience entries, newest first. Each needs a unique `id`.
+# Example:
+# - id: example-co-software-intern
+#   order: 1
+#   position: Software Engineering Intern
+#   companyName: Example Co
+#   companyLink: https://example.com
+#   companyIcon: /example-logo.png
+#   startedAt: "Jun 2025"
+#   endedAt: "Sep 2025"
+#   description: |
+#     What you did, in a sentence or two.
+
+- id: cloudflare-swe-intern
+  order: 1
+  position: Software Engineering Intern
+  companyName: Cloudflare
+  companyLink: https://www.cloudflare.com
+  companyIcon: https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Flogos-world.net%2Fwp-content%2Fuploads%2F2022%2F04%2FCloudflare-Emblem.png&f=1&nofb=1&ipt=7fc9229019d92033207d2a41e0f3dff32437270cb18fe1a19b8aec2a3184b189
+  startedAt: "Jul 2026"
+  endedAt: "Sep 2026"
+  description: Intern on the Cloudflare Agents & Sandboxes team.
+
+- id: karman-space-avionics-engineer
+  order: 2
+  position: Avionics Software Engineer
+  companyName: Karman Space Programme
+  companyLink: https://karmanspace.co.uk
+  companyIcon: https://static.wixstatic.com/media/a7e3f9_ade130a7eb9348f8a185035134164f5f~mv2.png/v1/fill/w_192%2Ch_192%2Clg_1%2Cusm_0.66_1.00_0.01/a7e3f9_ade130a7eb9348f8a185035134164f5f~mv2.png
+  startedAt: "Feb 2026"
+  endedAt: "Present"
+  description: "Working on KSP's Vega rocket towards a launch in Las Vegas in 2026 \U0001F680"
+
+- id: autumn-swe-intern
+  order: 3
+  position: Software Engineering Intern
+  companyName: Autumn (YC S25)
+  companyLink: https://useautumn.com
+  companyIcon: https://tulzpvq8km.ufs.sh/f/ppq0iTvbq3V7SY8frNy2V9QzOZu3I7YU4bgydeA1BvtjXlqo
+  startedAt: "July 2025"
+  endedAt: "July 2025"
+  description: |
+    - Rewrote Python SDK to correctly adhere to PEP 8 and other industry conventions. Introduced async support + wrote a server handler mountable to any ASGI app (pre-internship).
+    - Built usage limits, allowing users to set limits on how much a product can be used, e.g: $0.05 per chatbot message up to 1000 chat messages.
+    - Built the Autumn CLI in TypeScript, the new onboarding flow for Autumn: wrote server routes to handle OTP auth to onboard new users; implemented push and pull commands to update config/Autumn based on your chosen source of truth.
+    - Automated Autumn's tests via GitHub actions.

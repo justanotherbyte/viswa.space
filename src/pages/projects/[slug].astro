@@ -1,0 +1,85 @@
+---
+import { type CollectionEntry, getCollection, render } from "astro:content";
+import { Image } from "astro:assets";
+import SiteLayout from "../../layouts/SiteLayout.astro";
+import FormattedDate from "../../components/FormattedDate.astro";
+import { readingTime } from "../../lib/reading-time";
+import { SITE_TITLE } from "../../consts";
+
+export async function getStaticPaths() {
+	const projects = await getCollection("projects");
+	return projects.map((project) => ({
+		params: { slug: project.id },
+		props: project,
+	}));
+}
+
+type Props = CollectionEntry<"projects">;
+
+const project = Astro.props;
+const { title, description, date, image, imagePosition, published } =
+	project.data;
+const { Content } = await render(project);
+
+// Written out explicitly (not `object-${imagePosition}`) so Tailwind's static
+// scanner can see the literal class names and actually generate them.
+const positionClass = {
+	top: "object-top",
+	center: "object-center",
+	bottom: "object-bottom",
+}[imagePosition];
+const heroClass = `w-full max-h-96 object-cover ${positionClass} rounded-sm mb-4`;
+---
+
+<SiteLayout title={`${title} | ${SITE_TITLE}`} description={description}>
+	<link
+		rel="stylesheet"
+		href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css"
+	/>
+	<link
+		rel="stylesheet"
+		href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/tokyo-night-dark.min.css"
+	/>
+	<div>
+		{
+			typeof image === "string" ? (
+				<img src={image} alt={title} class={heroClass} />
+			) : (
+				<Image src={image} alt={title} width={1200} class={heroClass} />
+			)
+		}
+		<p class="text-zinc-600 dark:text-zinc-400 text-sm">
+			<FormattedDate date={date} /> · {readingTime(project.body ?? "")}
+		</p>
+		<h1 class="dark:text-white text-lg font-semibold mt-2 mb-3">{title}</h1>
+		{
+			!published && (
+				<p class="text-zinc-600 dark:text-zinc-400 text-xs">
+					⚠️
+					<span class="">
+						This article is in the works, and will soon be
+						completed.
+					</span>
+				</p>
+			)
+		}
+
+		<hr class="my-4 h-0.5 border-t-0 bg-zinc-300 dark:bg-white/10" />
+		<div
+			class="flow-root dark:text-white [&>*]:mb-4 [&_img:not(.float-image)]:mx-auto [&_h3]:underline [&_ul]:ml-3 [&_ul]:list-disc [&_a]:text-blue-400 [&_a]:hover:text-blue-600 [&>h1]:text-xl [&>h1]:font-bold [&>h1]:clear-both [&>h2]:text-lg [&>h2]:font-semibold [&>h2]:clear-both [&>p]:dark:text-zinc-300 [&>p]:text-zinc-600"
+		>
+			<Content />
+		</div>
+	</div>
+	<script
+		is:inline
+		src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"
+	></script>
+	<script
+		is:inline
+		src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/verilog.min.js"
+	></script>
+	<script is:inline>
+		hljs.highlightAll();
+	</script>
+</SiteLayout>

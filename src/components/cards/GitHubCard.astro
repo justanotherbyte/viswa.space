@@ -1,0 +1,26 @@
+---
+interface Props {
+	author: string;
+	name: string;
+	description: string;
+	language: string;
+	languageColor: string;
+	stars: number;
+}
+
+const { author, name, description, language, languageColor, stars } = Astro.props;
+const href = `https://github.com/${author}/${name}`;
+---
+
+<a
+	href={href}
+	class="relative block bg-zinc-100 dark:bg-zinc-800 rounded-none p-4 cursor-pointer border border-zinc-300 dark:border-zinc-700 active:opacity-75 duration-100"
+>
+	<span class="dark:text-white">
+		<span class="text-zinc-500 text-xs">{author}/</span>{name}
+	</span>
+	<p class="text-zinc-600 dark:text-zinc-400 mt-1 mb-6">{description}</p>
+
+	<h3 class="absolute left-4 bottom-2" style={`color: ${languageColor}`}>{language}</h3>
+	<h3 class="absolute right-4 bottom-2 dark:text-white">{stars} ⭐</h3>
+</a>

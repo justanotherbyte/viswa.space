@@ -1,0 +1,109 @@
+---
+import { Image, getImage } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+import SiteLayout from '../layouts/SiteLayout.astro';
+import Section from '../components/Section.astro';
+import { SITE_TITLE } from '../consts';
+
+const photoModules = import.meta.glob<{ default: ImageMetadata }>(
+	'../assets/photos/*.jpg',
+	{ eager: true },
+);
+
+const sortedPhotos = Object.entries(photoModules)
+	.map(([path, mod]) => {
+		const match = path.match(/img_(\d+)\.jpg$/);
+		return { index: match ? Number(match[1]) : 0, image: mod.default };
+	})
+	.sort((a, b) => a.index - b.index);
+
+// Thumbnails render via <Image> directly; the modal is driven by client JS,
+// so its full-size variant is precomputed here and passed through a data attribute.
+const photos = await Promise.all(
+	sortedPhotos.map(async ({ index, image }) => ({
+		index,
+		image,
+		full: (await getImage({ src: image, width: 1600 })).src,
+	})),
+);
+---
+
+<SiteLayout title={`Photography | ${SITE_TITLE}`} description="Photos I've taken.">
+	<Section
+		id="photography"
+		name="My Photography"
+		description="All Photos are taken on an iPhone 14 Pro Max."
+	>
+		<div class="grid lg:grid-cols-4 gap-3 sm:grid-cols-2">
+			{
+				photos.map(({ index, image, full }) => (
+					<button
+						class="group rounded-md overflow-hidden cursor-pointer photo-thumb"
+						data-index={index}
+						data-full={full}
+					>
+						<Image
+							src={image}
+							alt={`Photo ${index + 1}`}
+							class="rounded-sm h-full w-full transition-transform duration-200 ease-in-out group-hover:scale-110 object-cover"
+							width={600}
+							loading="lazy"
+						/>
+					</button>
+				))
+			}
+		</div>
+	</Section>
+
+	<div
+		id="photo-modal"
+		class="fixed inset-0 bg-zinc-900/90 z-50 hidden items-center justify-center p-4"
+	>
+		<div class="relative w-full h-full flex items-center justify-center">
+			<button
+				id="photo-modal-close"
+				class="absolute cursor-pointer top-4 right-4 text-white text-4xl font-bold hover:text-zinc-300 transition-colors z-10"
+			>
+				✕
+			</button>
+			<img
+				id="photo-modal-img"
+				src=""
+				alt=""
+				class="max-w-[95vw] max-h-[95vh] w-auto h-auto object-contain rounded-lg"
+			/>
+		</div>
+	</div>
+</SiteLayout>
+
+<script>
+	const modal = document.getElementById('photo-modal');
+	const modalImg = document.getElementById('photo-modal-img') as HTMLImageElement | null;
+	const closeBtn = document.getElementById('photo-modal-close');
+
+	const openModal = (full: string, index: number) => {
+		if (!modal || !modalImg || !full) return;
+		modalImg.src = full;
+		modalImg.alt = `Photo ${index + 1}`;
+		modal.classList.remove('hidden');
+		modal.classList.add('flex');
+	};
+
+	const closeModal = () => {
+		if (!modal) return;
+		modal.classList.add('hidden');
+		modal.classList.remove('flex');
+	};
+
+	document.querySelectorAll<HTMLElement>('.photo-thumb').forEach((el) => {
+		el.addEventListener('click', () => {
+			const index = Number(el.dataset.index);
+			openModal(el.dataset.full ?? '', index);
+		});
+	});
+
+	closeBtn?.addEventListener('click', closeModal);
+	modal?.addEventListener('click', (e) => {
+		if (e.target === modal) closeModal();
+	});
+</script>

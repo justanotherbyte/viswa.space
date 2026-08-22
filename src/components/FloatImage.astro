@@ -1,0 +1,28 @@
+---
+import { Image } from "astro:assets";
+import type { ImageMetadata } from "astro";
+
+interface Props {
+	src: ImageMetadata | string;
+	alt: string;
+	side?: "left" | "right";
+	width?: number;
+}
+
+const { src, alt, side = "left", width = 400 } = Astro.props;
+
+const floatClass =
+	side === "right" ? "md:float-right md:ml-6" : "md:float-left md:mr-6";
+// float-image opts this out of the article wrapper's `[&_img]:mx-auto` rule
+// (for centering plain markdown images), which would otherwise override
+// this margin via a more specific descendant selector.
+const sharedClass = `float-image w-full md:w-1/2 rounded-md mb-4 ${floatClass}`;
+---
+
+{
+	typeof src === "string" ? (
+		<img src={src} alt={alt} width={width} class={sharedClass} />
+	) : (
+		<Image src={src} alt={alt} width={width} class={sharedClass} />
+	)
+}

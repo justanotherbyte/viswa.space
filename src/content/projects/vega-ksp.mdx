@@ -1,0 +1,90 @@
+---
+title: "My work on VEGA @ KSP"
+description: "From our control dashboard to our sensor stack, I've had the opportunity to work on a fair few avionics systems on VEGA."
+date: "2026-08-19"
+image: "https://media.licdn.com/dms/image/v2/D4E22AQGG_2rvBq_88Q/feedshare-image-high-res/B4EZoybPScGcAo-/0/1761782593488?e=1788998400&v=beta&t=NWDHEvnGDIOrDRYx88BU75BZptVTc2_ozodx6tEwgqg"
+---
+
+import FloatImage from '../../components/FloatImage.astro';
+import originalGseSoftware from '../../assets/articles/vega-ksp/original-gse.svg';
+import newGseSoftware from '../../assets/articles/vega-ksp/new-vega-gse.svg';
+import cactusEngine from '../../assets/articles/vega-ksp/cactus-engine.png';
+
+It's been 6 months since I joined the [Karman Space Programme](https://karmanspace.co.uk) as an Avionics Engineer. The last 6 months have seen me working on our Ground Software and our Sensor Stack. Both have gone through a few iterations, which I'd like to walk you through today.
+
+# A brief intro to VEGA
+
+<FloatImage src={cactusEngine} side="right" alt="Cactus Engine" />
+
+VEGA is KSP's first [liquid rocket](https://en.wikipedia.org/wiki/Liquid-propellant_rocket), and has been in the works for a few years now. 
+It's the 3rd rocket in a line of 4 called the NOVA series (Nebula, Orion, Vega, Aurora).
+
+It's a huge rocket ($\approx$8m in length), using Isopropyl Alcohol (IPA) as it's propellant and Liquid Oxygen (LOX) as it's oxidizer.
+Liquid Rockets present an interesting challenge for Avionics teams - feed-system valves, pressure & temperature sensors, reliable communication between nodes and the Flight Computer, physical requirements such as vibration and temperature, communication on the ground and in the air, ground system development and more!
+
+The engine you see here our Cactus Engine, giving us $\approx$ 7.4kN of thrust. You can view our hot-fire footage on [YouTube](https://www.youtube.com/watch?v=uD076ZBq0A4) thanks to [Nikon SLM](https://nikon-slm-solutions.com/).
+
+# Ground Software
+
+The very first system I worked on at KSP was the Control UI for VEGA, which *at the time* was responsible for a limited set of tasks: displaying Pressure Transducer (PT) and Thermocouple (TC) readings, controlling and displaying valve states and displaying kinematics data.
+
+## Initial Design
+
+<FloatImage src={originalGseSoftware} side="left" alt="Original VEGA GSE software" />
+The initial design of our Ground Software was an off-the-shelf solution, piecing together Grafana and Influx DB for the dashboard, running within a Docker container,
+which communicated with a [Node-Red](https://nodered.org) instance, a block programming tool for event-driven software.
+
+Grafana and InfluxDB are a pair - Grafana is our UI which is constantly pulling time-series data from InfluxDB at set time intervals.
+Node-Red is purely event-driven software, reacting to certain signals. An example of this is an HTTP `POST /valves` sent from the Grafana server whenever we clicked a button to toggle the state of a valve.
+
+All of this ran on a [Revolution Pi](https://revolutionpi.com/en/) Connect 5 - an industrial Raspberry Pi 5 with, importantly, two CAN Buses. Yes, a Raspberry Pi on a rocket running full Ubuntu Linux. Wild?!
+
+This software ran on our Ground Station Equipment (GSE) and the idea was for the GSE RevPi to expose its own network that we could connect to and
+open the Grafana dashboard in a web browser.
+
+This was a fantastic solution at the time. We had zero core software to maintain for the Ground System Equipment (GSE), and could instead focus all our
+attention on the actual Vehicle software. 
+
+There is a down-side, however, to off-the-shelf, generic pieces of software. We had minimal control, and often found
+ourselves fighting Grafana a little to get an intuitive, easy to use UI going as **requirements grew**. Growing requirements led to more UI components and different networking requirements,
+ultimately leading to my decision to just build a custom UI.
+
+## Current Design
+
+<FloatImage src={newGseSoftware} side="right" alt="New/Current VEGA GSE software" />
+The new, current design of our GSE software is definitely a lot more involved, but allows us complete control over the exact networking and UI. While the diagram isn't fully representative of everything, it should give you a good idea of how the system now works.
+
+There is now a main UI software, purely responsible for displaying telemetry data and dispatching actuation commands to the Rocket or GSE. This runs on a laptop with us in the Bunker at [FAR](https://friendsofamateurrocketry.org/), connected via a CAT6 Ethernet cable
+to our GSE RevPi. The UI has 3 threads, a main UI thread running [dash](), a Data Acquisition Thread reading telemetry over the Ethernet link, and a Data Transmission Thread, publishing actuation commands from the UI. Communication between the threads is handled with last-value buffers (DAQ) and queues (DTM).
+
+This design also incorporates some fixes that our previous design assumed. The previous design assumed we'd be able to connect to the RevPi's LAN from the FAR bunker. I don't know why we ever assumed that would be possible - we now use a wired CAT6 Ethernet link communicating over [ZeroMQ](https://zeromq.org/) channels.
+
+# Sensor Stack
+
+I've spent a huge amount of time on our sensors - our Pressure Transducers and Thermocouples. Our PTs are read via a standard 4-20mA current loop configuration. Easy right? Well, PTs have caused us immense issues during cold-flows, and they have consistently failed on us in the past.
+
+This has historically been attributed to atrocious wiring and the additional complexity that came with powering our hardware of choice.
+
+## Pressure Transducers
+
+<FloatImage src={"https://controltech.uk.com/cdn/shop/files/1-033-CANIO-frontal-closedcover.webp?v=1753285740&width=640"} side="left" alt="CAN IO PLC"/>
+
+Our initial design comprised of some WaveShare RP2350 CAN boards that are effectively Pico 2's with CAN Bus Transceivers on them. Our PTs were wired with $120 \Omega$ shunt resistors, connected to 3 ADCs on the WaveShare board meaning we needed one WaveShare board per 3 PTs.
+On top of this, the boards were powered with 5V, but VEGA has a 12V/24V Bus, meaning we needed bulky buck converters to step down the voltage. This created multiple points of failure, one with power and one with the WaveShare board itself.
+
+We shifted to using a [CAN IO PLC](https://controltech.uk.com/products/can-i-o-plc) module. This is a high voltage module with CAN Bus and a bunch of voltage ADCs. There are models of the module with 4-20mA current inputs but we received the model without them. No big deal, we just stuck to using shunt resistors.
+
+Thanks to 9-30V voltage range, we were able to remove the buck converters for the waveshares. We were also able to use just a single CAN IO module. Huge wins!
+
+## Thermocouples
+
+<FloatImage src={"https://www.csselectronics.com/cdn/shop/files/canmod-temp-temperature-to-can-bus-4x-thermocouple-probes-front.jpg?v=1777635174"} side="right" alt="Thermocouple modules" />
+
+Our original Avionics stack involved fully custom boards using a `MAX31855` ADC for the micro-volt read outs from the TCs. During the revamp of our Pressure Transducer design, our new sponsor [Control Technologies](https://controltech.uk.com/) pointed us to some great `CANmod.temp` modules.
+
+These possess some of the same benefits as the CAN IO PLC module - no extra power electronics required, just tie straight to main power bus plus native CAN Bus without extra hardware. What more can you really ask for?
+
+## What's next?
+
+VEGA is due to be launched in a few weeks from the time of writing from the [Friends of Amateur Rocketry](https://friendsofamateurrocketry.org/) launch site out in the Mojave Desert. At the time of writing, VEGA is already in Texas being prepped for launch. Ad Astra.
+

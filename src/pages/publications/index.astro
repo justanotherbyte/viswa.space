@@ -1,0 +1,33 @@
+---
+import { getCollection } from 'astro:content';
+import SiteLayout from '../../layouts/SiteLayout.astro';
+import Section from '../../components/Section.astro';
+import BlogCard from '../../components/cards/BlogCard.astro';
+import { SITE_TITLE } from '../../consts';
+
+const publications = (
+	await getCollection('blog', ({ data }) => data.published)
+).sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+---
+
+<SiteLayout title={`Publications | ${SITE_TITLE}`} description="Articles I've written.">
+	<Section id="publications" name="Publications">
+		{
+			publications.length > 0 ? (
+				<div class="grid md:grid-cols-4 gap-x-2 sm:grid-cols-1 md:gap-y-0 gap-y-2">
+					{publications.map((post) => (
+						<BlogCard
+							name={post.data.title}
+							description={post.data.description}
+							slug={post.id}
+						/>
+					))}
+				</div>
+			) : (
+				<p class="text-zinc-500 dark:text-zinc-400 text-sm italic">
+					No publications yet — add some to src/content/blog.
+				</p>
+			)
+		}
+	</Section>
+</SiteLayout>

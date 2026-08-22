@@ -1,0 +1,33 @@
+---
+import { getCollection } from 'astro:content';
+import Section from '../Section.astro';
+import ProjectCard from '../cards/ProjectCard.astro';
+import { readingTime } from '../../lib/reading-time';
+
+const projects = (await getCollection('projects'))
+	.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+	.slice(0, 2);
+---
+
+<Section id="projects" name="Projects" moreInfo="/projects">
+	{
+		projects.length > 0 ? (
+			<div class="grid md:grid-cols-2 gap-x-2 sm:grid-cols-1 gap-y-2">
+				{projects.map((project) => (
+					<ProjectCard
+						title={project.data.title}
+						description={project.data.description}
+						image={project.data.image}
+						imagePosition={project.data.imagePosition}
+						readingTime={readingTime(project.body ?? '')}
+						slug={project.id}
+					/>
+				))}
+			</div>
+		) : (
+			<p class="text-zinc-500 dark:text-zinc-400 text-sm italic">
+				No projects yet — add some to src/content/projects.
+			</p>
+		)
+	}
+</Section>

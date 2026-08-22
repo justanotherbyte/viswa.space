@@ -3,7 +3,7 @@
 // all pages through the use of the <BaseHead /> component.
 import '../styles/global.css';
 import type { ImageMetadata } from 'astro';
-import FallbackImage from '../assets/blog-placeholder-1.jpg';
+import FallbackImage from '../assets/nasa.jpg';
 import { SITE_TITLE } from '../consts';
 import { Font } from 'astro:assets';
 
@@ -22,7 +22,6 @@ const { title, description, image = FallbackImage } = Astro.props;
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-<link rel="icon" href="/favicon.ico" />
 <link rel="sitemap" href="/sitemap-index.xml" />
 <link
 	rel="alternate"
@@ -33,6 +32,7 @@ const { title, description, image = FallbackImage } = Astro.props;
 <meta name="generator" content={Astro.generator} />
 
 <Font cssVariable="--font-atkinson" preload />
+<Font cssVariable="--font-jetbrains" preload />
 
 <!-- Canonical URL -->
 <link rel="canonical" href={canonicalURL} />
@@ -50,3 +50,11 @@ const { title, description, image = FallbackImage } = Astro.props;
 
 <!-- Twitter -->
 <meta name="twitter:card" content="summary_large_image" />
+
+<!-- Analytics -->
+<script
+	src="https://cdn.databuddy.cc/databuddy.js"
+	data-client-id="YRzXTWoOPm885oU7xpDSb"
+	data-enable-batching="true"
+	async
+></script>

@@ -1,0 +1,37 @@
+---
+import { getCollection } from 'astro:content';
+import SiteLayout from '../layouts/SiteLayout.astro';
+import Section from '../components/Section.astro';
+import ExperienceCard from '../components/cards/ExperienceCard.astro';
+import { SITE_TITLE } from '../consts';
+
+const experiences = (await getCollection('experience')).sort(
+	(a, b) => a.data.order - b.data.order,
+);
+---
+
+<SiteLayout title={`Experience | ${SITE_TITLE}`} description="My full work experience.">
+	<Section id="experience" name="Experience">
+		{
+			experiences.length > 0 ? (
+				<div class="flex flex-col gap-y-2">
+					{experiences.map(({ data: experience }) => (
+						<ExperienceCard
+							position={experience.position}
+							description={experience.description}
+							company={experience.companyName}
+							companyLink={experience.companyLink}
+							startDate={experience.startedAt}
+							endDate={experience.endedAt}
+							companyLogo={experience.companyIcon}
+						/>
+					))}
+				</div>
+			) : (
+				<p class="text-zinc-500 dark:text-zinc-400 text-sm italic">
+					No experience entries yet — add some to src/content/experience.yaml.
+				</p>
+			)
+		}
+	</Section>
+</SiteLayout>
