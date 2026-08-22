@@ -52,13 +52,13 @@ const heroClass = `w-full max-h-96 object-cover ${positionClass} rounded-sm mb-4
 				<Image src={image} alt={title} width={1200} class={heroClass} />
 			)
 		}
-		<h1 class="dark:text-white text-lg font-semibold mt-2 mb-3">{title}</h1>
+		<h1 class="dark:text-white text-lg font-semibold mb-2">{title}</h1>
 		<p class="text-zinc-600 dark:text-zinc-400 text-sm">
 			<FormattedDate date={date} /> · {readingTime(project.body ?? "")}
 		</p>
 		{
 			inProgress && (
-				<p class="text-zinc-600 dark:text-zinc-400 text-xs">
+				<p class="text-zinc-600 dark:text-zinc-400 text-xs mt-2">
 					⚠️
 					<span class="">
 						This article is in the works, and will soon be
