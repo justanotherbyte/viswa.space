@@ -8,15 +8,16 @@ interface Props {
 	title: string;
 	description: string;
 	image?: ImageMetadata | string;
+	twitterCard?: 'summary' | 'summary_large_image';
 }
 
-const { title, description, image } = Astro.props;
+const { title, description, image, twitterCard } = Astro.props;
 ---
 
 <!doctype html>
 <html lang="en">
 	<head>
-		<BaseHead title={title} description={description} image={image} />
+		<BaseHead title={title} description={description} image={image} twitterCard={twitterCard} />
 	</head>
 	<body class="dark:bg-zinc-900 antialiased">
 		<Navbar />

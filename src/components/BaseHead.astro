@@ -11,11 +11,14 @@ interface Props {
 	title: string;
 	description: string;
 	image?: ImageMetadata | string;
+	// 'summary_large_image' shows a large banner below the text (Discord/Twitter);
+	// 'summary' shows a compact thumbnail beside it instead.
+	twitterCard?: 'summary' | 'summary_large_image';
 }
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 
-const { title, description, image = FallbackImage } = Astro.props;
+const { title, description, image = FallbackImage, twitterCard = 'summary_large_image' } = Astro.props;
 // A string is already an absolute remote URL; a local import needs resolving
 // against the site origin to get an absolute URL for OG/Twitter crawlers.
 const ogImageURL = typeof image === 'string' ? image : new URL(image.src, Astro.url);
@@ -52,7 +55,7 @@ const ogImageURL = typeof image === 'string' ? image : new URL(image.src, Astro.
 <meta property="og:image" content={ogImageURL} />
 
 <!-- Twitter -->
-<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:card" content={twitterCard} />
 <meta name="twitter:title" content={title} />
 <meta name="twitter:description" content={description} />
 <meta name="twitter:image" content={ogImageURL} />
