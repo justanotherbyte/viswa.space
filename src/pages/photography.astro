@@ -57,7 +57,7 @@ const photos = await Promise.all(
 
 	<div
 		id="photo-modal"
-		class="fixed inset-0 bg-zinc-900/90 z-50 hidden items-center justify-center p-4"
+		class="fixed inset-0 bg-zinc-900/90 z-50 items-center justify-center p-4"
 	>
 		<div class="relative w-full h-full flex items-center justify-center">
 			<button
@@ -76,6 +76,62 @@ const photos = await Promise.all(
 	</div>
 </SiteLayout>
 
+<style>
+	#photo-modal {
+		display: none;
+		opacity: 0;
+		transition:
+			opacity 250ms var(--ease-out),
+			display 250ms allow-discrete;
+	}
+
+	#photo-modal.is-open {
+		display: flex;
+		opacity: 1;
+	}
+
+	@starting-style {
+		#photo-modal.is-open {
+			opacity: 0;
+		}
+	}
+
+	#photo-modal-img {
+		transform: scale(0.95);
+		opacity: 0;
+		transition:
+			transform 250ms var(--ease-out),
+			opacity 250ms var(--ease-out);
+	}
+
+	#photo-modal.is-open #photo-modal-img {
+		transform: scale(1);
+		opacity: 1;
+	}
+
+	@starting-style {
+		#photo-modal.is-open #photo-modal-img {
+			transform: scale(0.95);
+			opacity: 0;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		#photo-modal,
+		#photo-modal-img {
+			transition-duration: 150ms;
+		}
+
+		#photo-modal-img {
+			transform: none;
+		}
+
+		#photo-modal.is-open #photo-modal-img {
+			transform: none;
+		}
+	}
+</style>
+
 <script>
 	const modal = document.getElementById('photo-modal');
 	const modalImg = document.getElementById('photo-modal-img') as HTMLImageElement | null;
@@ -85,14 +141,12 @@ const photos = await Promise.all(
 		if (!modal || !modalImg || !full) return;
 		modalImg.src = full;
 		modalImg.alt = `Photo ${index + 1}`;
-		modal.classList.remove('hidden');
-		modal.classList.add('flex');
+		modal.classList.add('is-open');
 	};
 
 	const closeModal = () => {
 		if (!modal) return;
-		modal.classList.add('hidden');
-		modal.classList.remove('flex');
+		modal.classList.remove('is-open');
 	};
 
 	document.querySelectorAll<HTMLElement>('.photo-thumb').forEach((el) => {
