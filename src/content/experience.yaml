@@ -1,16 +1,3 @@
-# Work experience entries, newest first. Each needs a unique `id`.
-# Example:
-# - id: example-co-software-intern
-#   order: 1
-#   position: Software Engineering Intern
-#   companyName: Example Co
-#   companyLink: https://example.com
-#   companyIcon: /example-logo.png
-#   startedAt: "Jun 2025"
-#   endedAt: "Sep 2025"
-#   description: |
-#     What you did, in a sentence or two.
-
 - id: cloudflare-swe-intern
   order: 1
   position: Software Engineering Intern
