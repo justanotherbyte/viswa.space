@@ -1,38 +1,9 @@
 ---
-import { Image } from 'astro:assets';
-import inBugBlack from '../assets/InBug-Black.png';
-import inBugWhite from '../assets/InBug-White.png';
-import githubMark from '../assets/github-mark.png';
+import { MY_EMAIL } from '../consts';
 ---
-
-<footer class="container mx-auto max-w-screen-xl p-8">
-	<div class="grid grid-cols-3 dark:text-zinc-500">
-		<div>© 2026 Viswa Marepalli</div>
-		<div class="text-center justify-self-center">
-			<a href="/#aboutme" class="hover:text-zinc-300 duration-200">About </a>
-			·
-			<a
-				href="mailto:reachvishm+site@gmail.com"
-				class="hover:text-zinc-300 duration-200"
-			>
-				Contact</a
-			>
-		</div>
-		<div class="flex space-x-3 justify-self-end hidden dark:flex">
-			<a href="https://github.com/justanotherbyte" target="_blank">
-				<img src="/github-mark-white.svg" alt="GitHub page" class="h-8 w-8" width="24" height="24" />
-			</a>
-			<a href="https://www.linkedin.com/in/viswa-marepalli/" target="_blank">
-				<Image src={inBugWhite} alt="LinkedIn page" class="h-8 w-8" width={24} height={24} />
-			</a>
-		</div>
-		<div class="flex space-x-3 justify-self-end visible dark:hidden">
-			<a href="https://github.com/justanotherbyte" target="_blank">
-				<Image src={githubMark} alt="GitHub page" class="h-8 w-8" width={24} height={24} />
-			</a>
-			<a href="https://www.linkedin.com/in/mviswa/" target="_blank">
-				<Image src={inBugBlack} alt="LinkedIn page" class="h-8 w-8" width={24} height={24} />
-			</a>
-		</div>
-	</div>
+<footer class="site-footer">
+  <p class="eyebrow"><i class="signal-dot"></i> COMMUNICATIONS CHANNEL OPEN</p>
+  <div class="footer-top"><h2>Have something<br /><span>out of this world?</span></h2><a class="contact-orbit" href={`mailto:${MY_EMAIL}`} aria-label="Email Viswa"><span aria-hidden="true">↗</span></a></div>
+  <a class="footer-email" href={`mailto:${MY_EMAIL}`}>{MY_EMAIL}</a>
+  <div class="footer-bottom"><span>© {new Date().getFullYear()} VISWA MAREPALLI</span><span>BUILT ON EARTH. LOOKING BEYOND.</span><div><a href="https://github.com/justanotherbyte">GitHub ↗</a><a href="https://www.linkedin.com/in/mviswa/">LinkedIn ↗</a><a href="/rss.xml">RSS ↗</a><a href="#top">Back to top ↑</a></div></div>
 </footer>

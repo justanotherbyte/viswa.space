@@ -1,0 +1,16 @@
+---
+import ExpeditionLayout from '../layouts/ExpeditionLayout.astro';
+import { flights } from '../data/flight-archive';
+import { Image } from 'astro:assets';
+import engine from '../assets/articles/vega-ksp/cactus-engine.png';
+import fire from '../assets/articles/vega-ksp/hd-cactus-hotfire.png';
+import observation from '../assets/photos/img_7.jpg';
+const images = [engine, fire, observation];
+---
+<ExpeditionLayout title="Flight archive — Viswa" description="An open notebook of engineering experiments and ideas in motion." namespace="archive">
+  <div class="archive-page">
+    <header class="archive-heading"><p class="exp-kicker">AN OPEN NOTEBOOK / VOL. 001</p><h1>Flight<br /><em>archive.</em><span>(03)</span></h1><div><p>Experiments. Unanswered questions.<br />A few small steps into the unknown.</p><span>CONCEPT STUDIES<br />2025 — 2026</span></div></header>
+    {flights.map((flight, i) => <article class="archive-entry" id={flight.id}><div class="archive-entry-head"><span class="exp-kicker">/{flight.number} &nbsp; {flight.discipline}</span><span class="exp-kicker">{flight.year}</span></div><div class="archive-entry-grid"><div class="archive-image"><Image src={images[i]} alt={i === 0 ? 'Rocket engine hardware' : i === 1 ? 'Rocket engine static fire' : 'Landscape observation from the field'} width={1100} loading={i === 0 ? 'eager' : 'lazy'} /><span>VISUAL REFERENCE / {flight.number}</span></div><div class="archive-entry-copy"><h2 data-reveal>{flight.name}<span>↗</span></h2><p class="archive-line">{flight.line}</p><p>{flight.body}</p><details><summary>Open research notes <span>+</span></summary><p>{flight.details}</p><small>{flight.status}</small></details></div></div></article>)}
+    <div class="archive-end"><p class="exp-kicker">THERE’S ALWAYS ANOTHER QUESTION.</p><a href="/" data-cinematic>Back to<br /><em>the beginning.</em><span>↗</span></a><p class="archive-disclaimer">Concept portfolio — project names and descriptions are temporary creative content.</p><a href="/projects" data-barba-prevent class="underlined-link">Original project write-ups ↗</a></div>
+  </div>
+</ExpeditionLayout>

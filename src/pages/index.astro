@@ -1,21 +1,36 @@
 ---
-import SiteLayout from '../layouts/SiteLayout.astro';
-import About from '../components/About.astro';
-import ExperienceGrid from '../components/grids/ExperienceGrid.astro';
-import ProjectsGrid from '../components/grids/ProjectsGrid.astro';
-import PublicationsGrid from '../components/grids/PublicationsGrid.astro';
-import StackGrid from '../components/grids/StackGrid.astro';
-import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
+import ExpeditionLayout from '../layouts/ExpeditionLayout.astro';
+import { Image } from 'astro:assets';
+import fire from '../assets/articles/vega-ksp/hd-cactus-hotfire.png';
+import { flights } from '../data/flight-archive';
 ---
-
-<SiteLayout title={SITE_TITLE} description={SITE_DESCRIPTION} twitterCard="summary">
-	<About />
-	<br />
-	<ExperienceGrid />
-	<br />
-	<ProjectsGrid />
-	<br />
-	<PublicationsGrid />
-	<br />
-	<StackGrid />
-</SiteLayout>
+<ExpeditionLayout title="Viswa — Beyond the ordinary" description="An independent mind with interplanetary ambitions. Engineering, exploration, and everything beyond." namespace="journey">
+  <div class="ascent" id="ascent">
+    <div class="scene-stage" aria-hidden="true"><div class="scene-glow"></div><div class="scene-canvas"></div><div class="stage-fallback"><Image src={fire} alt="" width={1200} loading="eager" /></div></div>
+    <div class="story-panels">
+      <section class="story-panel opening" id="top" aria-labelledby="opening-title">
+        <p class="exp-kicker">VISWA MAREPALLI &nbsp; / &nbsp; ENGINEER, EXPLORER, HUMAN.</p>
+        <h1 id="opening-title"><span class="title-line">Beyond</span><span class="title-line">the ordinary<span class="orange">.</span></span></h1>
+        <div class="opening-bottom"><p>Somewhere between<br />a wild idea and liftoff.</p><a href="#ignition" class="scroll-invitation"><span class="scroll-line" aria-hidden="true"></span>SCROLL TO LEAVE THE GROUND</a><span class="edition">SELECTED EXPLORATIONS<br />VOL. 001 — 2026</span></div>
+      </section>
+      <section class="story-panel precision" id="ignition" aria-labelledby="precision-title">
+        <div class="chapter-copy"><p class="exp-kicker">01 — THE OBSESSION</p><h2 id="precision-title">It starts<br />with a<br /><em>what if.</em></h2><p class="chapter-description">What if the things we build could take us somewhere we’ve never been? I work in that space between a question and a working prototype.</p><button class="text-control" data-wireframe aria-pressed="false" hidden>Look beneath the surface <span>↗</span></button></div>
+        <span class="vertical-caption">VM–01 / AN EXERCISE IN POSSIBILITY</span>
+      </section>
+      <section class="story-panel departure" id="departure" aria-labelledby="departure-title"><p class="exp-kicker">02 — THE LEAP</p><h2 id="departure-title">Less gravity.<br /><em>More possibility.</em></h2><p>Make it. Break it. Understand it.<br />Then aim a little higher.</p><a class="round-link" href="#work" aria-label="Explore selected work"><span aria-hidden="true">↓</span></a></section>
+    </div>
+    <button class="motion-switch" aria-pressed="false" hidden>Pause motion</button>
+  </div>
+  <section class="manifesto" id="work">
+    <div class="manifesto-top"><span class="exp-kicker">03 — WORK IN PROGRESS</span><span class="exp-kicker">AND ALWAYS WILL BE.</span></div>
+    <h2 class="manifesto-statement" data-reveal>I’m not here to<br />keep my feet<br /><em>on the ground.</em></h2>
+    <div class="manifesto-aside"><span class="asterisk" aria-hidden="true">✳</span><p>I build at the intersection of code, hardware, and a slightly unreasonable curiosity. These are a few things that happened when I followed it.</p></div>
+    <div class="selected-flights">
+      {flights.map(flight => <a class="flight-row" href={`/flight-archive/#${flight.id}`} data-cinematic><span class="flight-number">/{flight.number}</span><h3>{flight.name}</h3><span class="flight-discipline">{flight.discipline}</span><span class="flight-year">{flight.year}</span><span class="flight-row-arrow" aria-hidden="true">↗</span></a>)}
+    </div>
+    <div class="archive-link-line"><span>AN OPEN NOTEBOOK, NOT A TROPHY CABINET.</span><a href="/flight-archive/" data-cinematic>Enter the archive <span>↗</span></a></div>
+  </section>
+  <section class="interlude"><Image src={fire} width={1800} alt="A rocket engine hot-fire test illuminates the test stand" loading="lazy" /><div class="interlude-copy"><p class="exp-kicker">THE MOMENT THEORY BECOMES SOMETHING ELSE.</p><p>Beautiful things<br />happen under pressure.</p></div><span class="image-note">PROPULSION STUDY / FIELD IMAGE</span></section>
+  <section class="human-note" id="aboutme"><p class="exp-kicker">04 — BACK ON EARTH</p><div><h2>Still very<br /><em>human.</em></h2><p>Usually found pulling something apart, chasing the last light with a camera, or making a coffee that’s stronger than it needs to be.</p><p>I like difficult questions, good people, and ideas that sound a little impossible at first.</p><a href="/photography" data-barba-prevent class="underlined-link">Life through my lens ↗</a></div><span class="human-coordinate">51°30′26″ N<br />00°07′39″ W<br /><small>LONDON, EARTH.</small></span></section>
+  <footer class="exp-footer"><p class="exp-kicker">THE NEXT CHAPTER IS UNWRITTEN.</p><a class="contact-title" href="mailto:hello@viswa.space">Let’s go<br /><em>further.</em><span aria-hidden="true">↗</span></a><div class="exp-footer-bottom"><span>© 2026 VISWA MAREPALLI</span><a href="mailto:hello@viswa.space">HELLO@VISWA.SPACE</a><a href="#top">BACK TO EARTH ↑</a></div></footer>
+</ExpeditionLayout>
