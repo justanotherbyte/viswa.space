@@ -1,42 +1,14 @@
 ---
 import { Image } from 'astro:assets';
 import type { ImageMetadata } from 'astro';
-
-interface Props {
-	title: string;
-	description: string;
-	image: ImageMetadata | string;
-	imagePosition?: 'top' | 'center' | 'bottom';
-	readingTime: string;
-	slug: string;
-}
-
+interface Props { title: string; description: string; image: ImageMetadata | string; imagePosition?: 'top' | 'center' | 'bottom'; readingTime: string; slug: string; }
 const { title, description, image, imagePosition = 'center', readingTime, slug } = Astro.props;
-
-// Written out explicitly (not `object-${imagePosition}`) so Tailwind's static
-// scanner can see the literal class names and actually generate them.
-const positionClass = {
-	top: 'object-top',
-	center: 'object-center',
-	bottom: 'object-bottom',
-}[imagePosition];
-const imgClass = `w-full h-40 object-cover ${positionClass} border-b border-zinc-700`;
+const category = ({ 'vega-ksp': 'ROCKETRY / GROUND SYSTEMS', 'fpga-itch-parser': 'HARDWARE / FPGA' } as Record<string, string>)[slug] ?? 'ENGINEERING / PROJECT';
 ---
-
-<a
-	href={`/projects/${slug}`}
-	class="flex flex-col bg-zinc-100 dark:bg-zinc-800 rounded-none border border-zinc-300 dark:border-zinc-700 overflow-hidden cursor-pointer active:opacity-75 duration-100"
->
-	{
-		typeof image === 'string' ? (
-			<img src={image} alt={title} class={imgClass} />
-		) : (
-			<Image src={image} alt={title} width={400} class={imgClass} />
-		)
-	}
-	<div class="p-4">
-		<div class="dark:text-white">{title}</div>
-		<p class="text-zinc-600 dark:text-zinc-400 mt-1">{description}</p>
-		<p class="text-zinc-400 text-xs mt-2">{readingTime}</p>
-	</div>
+<a href={`/projects/${slug}`} class="project-card">
+  <div class="project-image" style={`--image-position: ${imagePosition}`}>
+    {typeof image === 'string' ? <img src={image} alt={title} loading="lazy" /> : <Image src={image} alt={title} width={900} loading="lazy" />}
+    <span class="project-category">{category}</span><span class="project-arrow" aria-hidden="true">↗</span>
+  </div>
+  <div class="project-content"><p class="card-meta">MISSION DOSSIER <span>{readingTime}</span></p><h3>{title}</h3><p>{description}</p><span class="card-link">Explore project <span aria-hidden="true">↗</span></span></div>
 </a>

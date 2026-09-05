@@ -15,13 +15,14 @@ const { title, description, image, twitterCard } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
 	<head>
 		<BaseHead title={title} description={description} image={image} twitterCard={twitterCard} />
 	</head>
 	<body class="dark:bg-zinc-900 antialiased">
+		<a href="#main-content" class="skip-link">Skip to content</a>
 		<Navbar />
-		<main class="container mx-auto max-w-screen-xl p-8">
+		<main id="main-content" class="site-main">
 			<slot />
 		</main>
 		<Footer />

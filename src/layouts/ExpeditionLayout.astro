@@ -1,0 +1,28 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import '../styles/expedition.css';
+interface Props { title: string; description: string; namespace: string; }
+const { title, description, namespace } = Astro.props;
+---
+<!doctype html>
+<html lang="en" class="dark expedition-html">
+  <head><BaseHead title={title} description={description} /></head>
+  <body class="expedition" data-barba="wrapper">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <header class="exp-header">
+      <a class="exp-wordmark" href="/" data-cinematic aria-label="Viswa home">viswa<span>®</span></a>
+      <span class="exp-header-note">INDEPENDENT MIND.<br />INTERPLANETARY AMBITIONS.</span>
+      <button class="index-toggle" aria-expanded="false" aria-controls="exp-index">Index <span aria-hidden="true">+</span></button>
+    </header>
+    <dialog id="exp-index" class="exp-index" aria-label="Site index">
+      <button class="index-close" aria-label="Close index">Close ×</button>
+      <nav aria-label="Main navigation"><a href="/" data-cinematic><small>01</small>The journey<span>↗</span></a><a href="/flight-archive/" data-cinematic><small>02</small>Flight archive<span>↗</span></a><a href="/photography" data-barba-prevent><small>03</small>Observations<span>↗</span></a><a href="mailto:hello@viswa.space"><small>04</small>Make contact<span>↗</span></a></nav>
+      <p>LONDON, EARTH &nbsp; / &nbsp; STILL CURIOUS.</p>
+    </dialog>
+    <noscript><nav class="nojs-index" aria-label="Site navigation"><a href="/">Journey</a><a href="/flight-archive/">Flight archive</a><a href="/photography">Photography</a></nav></noscript>
+    <main id="main-content" data-barba="container" data-barba-namespace={namespace} tabindex="-1"><slot /></main>
+    <div class="page-shutter" aria-hidden="true"><span>Further.</span></div>
+    <div class="exp-progress" aria-hidden="true"><span></span></div>
+    <script src="../scripts/experience/app.js"></script>
+  </body>
+</html>
