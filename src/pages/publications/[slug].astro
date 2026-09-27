@@ -1,6 +1,8 @@
 ---
 import { type CollectionEntry, getCollection, render } from 'astro:content';
 import SiteLayout from '../../layouts/SiteLayout.astro';
+import TableOfContents from '../../components/TableOfContents.astro';
+import { tocHeadings } from '../../lib/toc';
 import { SITE_TITLE } from '../../consts';
 
 export async function getStaticPaths() {
@@ -15,7 +17,8 @@ type Props = CollectionEntry<'blog'>;
 
 const post = Astro.props;
 const { title, description, published } = post.data;
-const { Content } = await render(post);
+const { Content, headings } = await render(post);
+const toc = tocHeadings(headings);
 ---
 
 <SiteLayout title={`${title} | ${SITE_TITLE}`} description={description}>
@@ -31,8 +34,26 @@ const { Content } = await render(post);
 			)
 		}
 		<hr class="my-4 h-0.5 border-t-0 bg-zinc-300 dark:bg-white/10" />
-		<div class="flow-root dark:text-white [&>*]:mb-4 [&_img:not(.float-image)]:mx-auto [&_h3]:underline [&_ul]:ml-3 [&_ul]:list-disc [&_a]:text-blue-400 [&_a]:hover:text-blue-600 [&>h1]:text-xl [&>h1]:font-bold [&>h1]:clear-both [&>h2]:text-lg [&>h2]:font-semibold [&>h2]:clear-both [&>p]:dark:text-zinc-300 [&>p]:text-zinc-600">
-			<Content />
+		{
+			toc.length > 0 && (
+				<div class="lg:hidden mb-4">
+					<TableOfContents headings={toc} variant="inline" />
+				</div>
+			)
+		}
+		<div class:list={[toc.length > 0 && "lg:grid lg:grid-cols-[minmax(0,1fr)_14rem] lg:gap-8"]}>
+			<div class="flow-root dark:text-white [&_:is(h1,h2,h3,h4)]:scroll-mt-24 [&>*]:mb-4 [&_img:not(.float-image)]:mx-auto [&_h3]:underline [&_ul]:ml-3 [&_ul]:list-disc [&_a]:text-blue-400 [&_a]:hover:text-blue-600 [&>h1]:text-xl [&>h1]:font-bold [&>h1]:clear-both [&>h2]:text-lg [&>h2]:font-semibold [&>h2]:clear-both [&>p]:dark:text-zinc-300 [&>p]:text-zinc-600">
+				<Content />
+			</div>
+			{
+				toc.length > 0 && (
+					<aside class="hidden lg:block">
+						<div class="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto">
+							<TableOfContents headings={toc} variant="sidebar" />
+						</div>
+					</aside>
+				)
+			}
 		</div>
 	</div>
 	<script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>

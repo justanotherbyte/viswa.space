@@ -1,0 +1,98 @@
+---
+import type { MarkdownHeading } from "astro";
+
+interface Props {
+	// Already filtered by tocHeadings() in src/lib/toc.ts.
+	headings: MarkdownHeading[];
+	// "sidebar" is the sticky desktop column; "inline" is the collapsed
+	// <details> shown above the post body on smaller screens.
+	variant: "sidebar" | "inline";
+}
+
+const { headings, variant } = Astro.props;
+
+const minDepth = Math.min(...headings.map((h) => h.depth));
+
+// Written out explicitly so Tailwind's static scanner picks them up.
+const indentClass = ["", "pl-3"];
+---
+
+{
+	headings.length > 0 && (
+		<nav aria-label="Table of contents" class="toc text-sm">
+			{variant === "sidebar" ? (
+				<>
+					<p class="mb-2 font-semibold dark:text-white">Contents</p>
+					<ol class="space-y-1.5">
+						{headings.map((h) => (
+							<li class={indentClass[h.depth - minDepth]}>
+								<a
+									href={`#${h.slug}`}
+									data-toc-link={h.slug}
+									class="block text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white aria-[current=true]:text-blue-400 transition-colors"
+								>
+									{h.text}
+								</a>
+							</li>
+						))}
+					</ol>
+				</>
+			) : (
+				<details class="rounded-sm border border-zinc-300 dark:border-white/10 px-3 py-2">
+					<summary class="cursor-pointer font-semibold dark:text-white">
+						Contents
+					</summary>
+					<ol class="mt-2 space-y-1.5">
+						{headings.map((h) => (
+							<li class={indentClass[h.depth - minDepth]}>
+								<a
+									href={`#${h.slug}`}
+									class="block text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors"
+								>
+									{h.text}
+								</a>
+							</li>
+						))}
+					</ol>
+				</details>
+			)}
+		</nav>
+	)
+}
+
+<script>
+	// Highlights the sidebar entry for the section currently being read. The
+	// TOC is plain anchor links without this, so it's purely an enhancement.
+	const links = new Map<string, HTMLAnchorElement>();
+	document
+		.querySelectorAll<HTMLAnchorElement>("[data-toc-link]")
+		.forEach((a) => links.set(a.dataset.tocLink!, a));
+
+	const headings = [...links.keys()]
+		.map((id) => document.getElementById(id))
+		.filter((el): el is HTMLElement => el !== null);
+
+	if (headings.length > 0) {
+		// The active section is the last heading scrolled past a line just
+		// below the sticky navbar, which also holds when scrolling back up.
+		const update = () => {
+			const current = headings.findLast((h) => h.getBoundingClientRect().top <= 120);
+			links.forEach((a, id) => a.setAttribute("aria-current", String(id === current?.id)));
+		};
+
+		let queued = false;
+		window.addEventListener(
+			"scroll",
+			() => {
+				if (queued) return;
+				queued = true;
+				requestAnimationFrame(() => {
+					queued = false;
+					update();
+				});
+			},
+			{ passive: true },
+		);
+		update();
+	}
+</script>

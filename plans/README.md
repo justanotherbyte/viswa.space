@@ -1,12 +1,13 @@
-# Animation plans
+# Plans
 
 | # | Title | Severity | Status |
 | --- | --- | --- | --- |
 | [001](001-photography-lightbox-transition.md) | Animate the photography lightbox open/close | MEDIUM | IMPLEMENTED (feel-check pending) |
+| [002](002-post-table-of-contents.md) | Sidebar table of contents for blog and project posts | MEDIUM | IMPLEMENTED (feel-check pending) |
 
 ## Execution order
 
-Just the one plan right now — no dependencies. It's already implemented directly in the main working tree as uncommitted changes to `src/styles/global.css` and `src/pages/photography.astro` (see below for why).
+No dependencies between plans. Plan 001 was implemented directly in the main working tree, as changes to `src/styles/global.css` and `src/pages/photography.astro` (see below for why).
 
 ## Notes
 
