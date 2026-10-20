@@ -10,8 +10,8 @@ const fpga = `
       | (O)             [ o o o o o o o o o o o o o o o o o o o o o o ]   [ o o o o o o o o o o o o o o o o ]                           (O)|
   +--------+                                                                                                                               |
   |=USB  ==|--------------------------------------.                                                                       JA +-------------+
-  +--------+                                      |                                 [PROG]                      .------------| o o o o o o |
-      |                                         ' ' ' ' ' ' ' ' ' ' ' ' ' ' '         o DONE                    |            | o o o o o o |
+  |        |------------------------------------. |                                 [PROG]                      .------------| o o o o o o |
+  +--------+                                    ' ' ' ' ' ' ' ' ' ' ' ' ' ' '         o DONE                    |            | o o o o o o |
       |                 +--------------+      -+-----------------------------+-                                 |            +-------------+
 +------------+          |              |======-|                             |----------------------------------'                          |
 |  ETH       |          |    DDR3L     |======-|   VISWA.SPACE               |-                                           JB +-------------+
@@ -46,8 +46,20 @@ const power = [
 	[[17, 21], [17, 44], [14, 44], [14, 48]],
 ].map((pts) => wire(pts as Pt[]));
 const bitstream = wire([[15, 36], [15, 40], [13, 40], [13, 47]]);
+// real 8N1 frames at one character width per bit; lit means the line is pulled low, so idle is dark and each frame opens with its start bit
+const uart = (pts: Pt[], text: string) => {
+	const bits = [...text]
+		.flatMap((ch) => [0, ...Array.from({ length: 8 }, (_, b) => (ch.charCodeAt(0) >> b) & 1), 1])
+		.concat(Array(40).fill(1));
+	const runs = bits.reduce<number[]>((rs, b, i) => (b === bits[i - 1] ? rs[rs.length - 1]++ : rs.push(1), rs), []);
+	// drawn destination first, so a growing dashoffset delivers the first bit first
+	return { d: wire(pts.toReversed()).d, dash: runs.map((n) => n * 6).join(' '), period: bits.length * 6 };
+};
+const serial = [
+	uart([[4, 12], [4, 48]], 'ping'), // RX, host to FPGA
+	uart([[4, 50], [3, 50], [3, 12]], 'pong'), // TX, FPGA to host
+];
 const signals = [
-	[[3, 12], [3, 50], [4, 50]], // USB
 	[[7, 79], [7, 112], [4, 112], [4, 124]], // JA
 	[[10, 14], [10, 20], [12, 20], [12, 45]], // ETH
 	[[7, 40], [7, 45]], // DDR3 writes and reads
@@ -64,6 +76,10 @@ const rgb = [70, 75, 80, 85].map((c) => at([17, c]));
 // the RGB LEDs' '@' glyphs are drawn separately so they can fade out when the LEDs light
 fpga[17] = fpga[17].replaceAll('@', ' ');
 const done = at([5, 86]);
+// switches and buttons are drawn as SVG parts so they can move and take clicks
+fpga[19] = fpga[19].replace(/\[_\|\]|\(o\)/g, (m) => ' '.repeat(m.length));
+// the USB label sits half a row down, centred between the TX and RX traces
+fpga[3] = fpga[3].replace('=USB  ==', '        ');
 ---
 
 <footer class="container mx-auto max-w-screen-xl p-8">
@@ -84,20 +100,42 @@ const done = at([5, 86]);
 					<path class="rail" d={w.d} style={`--len:${w.len};--delay:${i * 0.35}s`} />
 				))}
 				<path class="bitstream" d={bitstream.d} />
+				{serial.map((w, i) => (
+					<path class="uart" d={w.d} stroke-dasharray={w.dash} style={`--period:${w.period};--dur:${(w.period / 240).toFixed(2)}s;--delay:${2.6 + i}s`} />
+				))}
 				{signals.map((w, i) => (
 					<path class="signal" d={w.d} style={`--len:${w.len};--dur:${((w.len + 18) / 260 / 0.45).toFixed(2)}s;--delay:${(2.6 + i * 0.41).toFixed(2)}s`} />
 				))}
 			</g>
 			<circle class="led done" cx={done[0]} cy={done[1]} r="3" />
 			{counter.map(([x, y], i) => (
-				<circle class="led count" cx={x} cy={y - 1} r="3" style={`--period:${0.8 * 2 ** i}s`} />
+				<circle id={`ld${7 - i}`} class="led count" cx={x} cy={y - 1} r="3" style={`--period:${0.8 * 2 ** i}s`} />
 			))}
 			{rgb.map(([x]) => (
 				<text class="rgb-glyph" x={x} y={17 * 12 + 10} font-size="10" text-anchor="middle">@</text>
 			))}
 			{rgb.map(([x, y], i) => (
-				<circle class="led rgb" cx={x} cy={y} r="3" style={`--phase:${-i * 0.75}s`} />
+				<circle id={`ld${i}`} class="led rgb" cx={x} cy={y} r="3" style={`--phase:${-i * 0.75}s`} />
 			))}
+			{/* SWn holds LD(n+4) on, BTNn turns LDn white while pressed, RESET replays the boot */}
+			<text x="18" y={3.5 * 12 + 10} font-size="10" textLength="48" lengthAdjust="spacingAndGlyphs" xml:space="preserve">=USB  ==</text>
+			{/* slide switches: a 10x15 housing whose knob sits low when off and slides up when on */}
+			{[0, 1, 2, 3].map((i) => (
+				<g class="switch" data-led={`ld${i + 4}`}>
+					<rect class="housing" x={285 + i * 30} y="226.5" width="10" height="15" />
+					<rect class="knob" x={287 + i * 30} y="233.5" width="6" height="6" />
+					<rect x={276 + i * 30} y={19 * 12} width="24" height="24" fill="transparent" />
+				</g>
+			))}
+			{/* tactile buttons: a square housing with a round cap that sinks while held */}
+			{[0, 1, 2, 3].map((i) => (
+				<g class="button" data-led={`ld${i}`}>
+					<rect class="housing" x={415 + i * 30} y="227" width="14" height="14" />
+					<circle class="cap" cx={422 + i * 30} cy="234" r="4" />
+					<rect x={413 + i * 30} y={19 * 12} width="18" height="24" fill="transparent" />
+				</g>
+			))}
+			<rect class="reset" x="60" y={19 * 12} width="42" height="12" fill="transparent" />
 		</svg>
 	)}
 	<div class="grid grid-cols-3 dark:text-zinc-500">
@@ -149,9 +187,57 @@ const done = at([5, 86]);
 		stroke-dashoffset: 18px;
 		animation: travel var(--dur) cubic-bezier(0.45, 0, 0.55, 1) var(--delay) infinite;
 	}
+	.uart {
+		stroke-linecap: butt;
+		opacity: 0;
+		animation:
+			light 0.15s ease-out var(--delay) forwards,
+			shift var(--dur) linear var(--delay) infinite;
+	}
 	.led {
 		fill: #22c55e;
 		opacity: 0;
+	}
+	/* !important outranks the running animations, which keep going underneath */
+	.count.on {
+		opacity: 1 !important;
+	}
+	.rgb.on {
+		fill: #fff !important;
+		stroke: currentColor;
+	}
+	.switch, .button, .reset {
+		--accent: #3b82f6;
+		cursor: pointer;
+	}
+	.housing {
+		fill: transparent;
+		stroke: currentColor;
+		transition: stroke 150ms ease-out;
+	}
+	.switch:hover .housing, .button:hover .housing {
+		stroke: var(--accent);
+	}
+	.knob, .cap {
+		transform-box: fill-box;
+		transform-origin: center;
+		transition:
+			transform 120ms cubic-bezier(0.16, 1, 0.3, 1),
+			fill 120ms ease-out;
+	}
+	.switch.on .knob {
+		fill: var(--accent);
+		transform: translateY(-5px);
+	}
+	.button.held .cap {
+		fill: var(--accent);
+		transform: scale(0.8);
+	}
+	@media (prefers-color-scheme: dark) {
+		.switch, .button, .reset { --accent: #60a5fa; }
+	}
+	.restart * {
+		animation: none !important;
 	}
 	.done {
 		animation: light 0.15s ease-out 2.6s forwards;
@@ -178,6 +264,9 @@ const done = at([5, 86]);
 	@keyframes stream {
 		from { opacity: 1; stroke-dashoffset: 0; }
 		to { opacity: 1; stroke-dashoffset: -12; }
+	}
+	@keyframes shift {
+		to { stroke-dashoffset: calc(var(--period) * 1px); }
 	}
 	@keyframes travel {
 		0% { stroke-dashoffset: 18px; }
@@ -206,9 +295,10 @@ const done = at([5, 86]);
 	/* reduced motion: show the board already configured and running, with nothing moving */
 	@media (prefers-reduced-motion: reduce) {
 		.rail { stroke-dashoffset: 0; }
-		.bitstream, .signal { display: none; }
+		.bitstream, .signal, .uart { display: none; }
 		.done, .rgb, .count:nth-of-type(odd) { opacity: 1; }
 		.led, .rgb-glyph { animation: none; }
+		.housing, .knob, .cap { transition: none; }
 		.rgb-glyph { opacity: 0; }
 		.rgb:nth-of-type(3n) { fill: #ef4444; }
 		.rgb:nth-of-type(3n + 1) { fill: #3b82f6; }
@@ -219,5 +309,27 @@ const done = at([5, 86]);
 	const board = document.getElementById('fpga-board');
 	if (board) {
 		new IntersectionObserver(([entry]) => board.classList.toggle('is-live', entry.isIntersecting)).observe(board);
+		board.querySelectorAll<SVGElement>('.switch').forEach((sw) =>
+			sw.addEventListener('click', () => {
+				sw.classList.toggle('on', document.getElementById(sw.dataset.led!)!.classList.toggle('on'));
+			}),
+		);
+		board.querySelectorAll<SVGElement>('.button').forEach((btn) => {
+			const led = document.getElementById(btn.dataset.led!)!;
+			const press = (down: boolean) => () => {
+				btn.classList.toggle('held', down);
+				led.classList.toggle('on', down);
+			};
+			btn.addEventListener('pointerdown', press(true));
+			for (const type of ['pointerup', 'pointerleave', 'pointercancel']) {
+				btn.addEventListener(type, press(false));
+			}
+		});
+		board.querySelector('.reset')!.addEventListener('click', () => {
+			// dropping every animation for one style flush restarts them all from the top
+			board.classList.add('restart');
+			board.getBoundingClientRect();
+			board.classList.remove('restart');
+		});
 	}
 </script>
