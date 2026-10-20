@@ -3,9 +3,103 @@ import { Image } from 'astro:assets';
 import inBugBlack from '../assets/InBug-Black.png';
 import inBugWhite from '../assets/InBug-White.png';
 import githubMark from '../assets/github-mark.png';
+
+const isHome = Astro.url.pathname === '/';
+const fpga = `
+      .------------------------------------------------------------------------------------------------------------------------------------.
+      | (O)             [ o o o o o o o o o o o o o o o o o o o o o o ]   [ o o o o o o o o o o o o o o o o ]                           (O)|
+  +--------+                                                                                                                               |
+  |=USB  ==|--------------------------------------.                                                                       JA +-------------+
+  +--------+                                      |                                 [PROG]                      .------------| o o o o o o |
+      |                                         ' ' ' ' ' ' ' ' ' ' ' ' ' ' '         o DONE                    |            | o o o o o o |
+      |                 +--------------+      -+-----------------------------+-                                 |            +-------------+
++------------+          |              |======-|                             |----------------------------------'                          |
+|  ETH       |          |    DDR3L     |======-|   VISWA.SPACE               |-                                           JB +-------------+
+| [||||||||] |          |    256MB     |======-|     ORBIT-7                 |-----------------------------------------------| o o o o o o |
+|            |------.   |              |======-|        VSM7A26T             |------------------------------------.          | o o o o o o |
++------------+      |   +--------------+      -|                             |------------.                       |          +-------------+
+      |             '--------------------------+-----------------------------+-           |   ARTY A7-35T         |                        |
+      |                                 .-------, , , , , , , , , , , , , , ,             |                       |       JC +-------------+
+ .----------.             +--------+    |   .==== | |     |   |       |     |             |                       '----------| o o o o o o |
+ |  ((O))   |=====.       |  QSPI  |----'   |     | |     |   |       |     |             |                                  | o o o o o o |
+ |   PWR    |     |       +--------+        | LD4 |LD5  LD6  LD7     LD0  LD1  LD2  LD3   |                                  +-------------+
+ '----------'   [3V3]======================='  *  | *    *    *      (@)  (@)  (@)  (@)   |                                                |
+      |                                       ----'------------------------------------   |                               JD +-------------+
+      |   [RESET]                             [_|] [_|] [_|] [_|]    (o)  (o)  (o)  (o)   '----------------------------------| o o o o o o |
+      |                                        SW0  SW1  SW2  SW3   BTN0 BTN1 BTN2 BTN3                                      | o o o o o o |
+      |                                                                                                                      +-------------+
+      | (O)             [ o o o o o o o o o o o o o o o o ]   [ o o o o o o o o o o o o o o o o o o o o o o ]                           (O)|
+      '------------------------------------------------------------------------------------------------------------------------------------'
+`.slice(1, -1).split('\n');
+// pad lines so an editor stripping trailing spaces can't skew the per-line stretch below
+const cols = Math.max(...fpga.map((l) => l.length));
+
+// traces as [row, col] waypoints on the art's character grid, listed source to destination
+type Pt = [number, number];
+const at = ([r, c]: Pt) => [c * 6 + 3, r * 12 + 6.5];
+const wire = (pts: Pt[]) => ({
+	d: 'M' + pts.map((p) => at(p).join(' ')).join(' L'),
+	len: pts.slice(1).reduce((n, [r, c], i) => n + Math.abs(c - pts[i][1]) * 6 + Math.abs(r - pts[i][0]) * 12, 0),
+});
+const power = [
+	[[15, 13], [15, 18], [16, 18]],
+	[[17, 21], [17, 44], [14, 44], [14, 48]],
+].map((pts) => wire(pts as Pt[]));
+const bitstream = wire([[15, 36], [15, 40], [13, 40], [13, 47]]);
+const signals = [
+	[[3, 12], [3, 50], [4, 50]], // USB
+	[[7, 79], [7, 112], [4, 112], [4, 124]], // JA
+	[[10, 14], [10, 20], [12, 20], [12, 45]], // ETH
+	[[7, 40], [7, 45]], // DDR3 writes and reads
+	[[9, 79], [9, 124]], // JB
+	[[18, 86], [18, 50], [14, 50]], // switches and buttons
+	[[8, 45], [8, 40]],
+	[[10, 79], [10, 114], [14, 114], [14, 124]], // JC
+	[[9, 40], [9, 45]],
+	[[11, 79], [11, 90], [19, 90], [19, 124]], // JD
+	[[10, 45], [10, 40]],
+].map((pts) => wire(pts as Pt[]));
+const counter = [62, 57, 52, 47].map((c) => at([17, c])); // LD7..LD4, least significant bit first
+const rgb = [70, 75, 80, 85].map((c) => at([17, c]));
+// the RGB LEDs' '@' glyphs are drawn separately so they can fade out when the LEDs light
+fpga[17] = fpga[17].replaceAll('@', ' ');
+const done = at([5, 86]);
 ---
 
 <footer class="container mx-auto max-w-screen-xl p-8">
+	{isHome && (
+		<svg
+			id="fpga-board"
+			viewBox={`0 0 ${cols * 6} ${fpga.length * 12}`}
+			class="w-full mb-8 whitespace-pre font-mono text-zinc-400 dark:text-zinc-600"
+			fill="currentColor"
+			aria-hidden="true"
+		>
+			{/* textLength stretches every line to the full width, whatever the font's glyph width */}
+			{fpga.map((line, i) => (
+				<text x="0" y={i * 12 + 10} font-size="10" textLength={cols * 6} lengthAdjust="spacingAndGlyphs" xml:space="preserve">{line.padEnd(cols)}</text>
+			))}
+			<g fill="none" stroke-width="2" stroke-linecap="round" class="text-blue-500 dark:text-blue-400" stroke="currentColor">
+				{power.map((w, i) => (
+					<path class="rail" d={w.d} style={`--len:${w.len};--delay:${i * 0.35}s`} />
+				))}
+				<path class="bitstream" d={bitstream.d} />
+				{signals.map((w, i) => (
+					<path class="signal" d={w.d} style={`--len:${w.len};--dur:${((w.len + 18) / 260 / 0.45).toFixed(2)}s;--delay:${(2.6 + i * 0.41).toFixed(2)}s`} />
+				))}
+			</g>
+			<circle class="led done" cx={done[0]} cy={done[1]} r="3" />
+			{counter.map(([x, y], i) => (
+				<circle class="led count" cx={x} cy={y - 1} r="3" style={`--period:${0.8 * 2 ** i}s`} />
+			))}
+			{rgb.map(([x]) => (
+				<text class="rgb-glyph" x={x} y={17 * 12 + 10} font-size="10" text-anchor="middle">@</text>
+			))}
+			{rgb.map(([x, y], i) => (
+				<circle class="led rgb" cx={x} cy={y} r="3" style={`--phase:${-i * 0.75}s`} />
+			))}
+		</svg>
+	)}
 	<div class="grid grid-cols-3 dark:text-zinc-500">
 		<div>© 2026 Viswa Marepalli</div>
 		<div class="text-center justify-self-center">
@@ -36,3 +130,94 @@ import githubMark from '../assets/github-mark.png';
 		</div>
 	</div>
 </footer>
+
+<style>
+	/* boot sequence: power rail, bitstream from flash, DONE, then the design runs */
+	.rail {
+		stroke-dasharray: calc(var(--len) * 1px) calc(var(--len) * 1px);
+		stroke-dashoffset: calc(var(--len) * 1px);
+		opacity: 0.55;
+		animation: energize 0.7s cubic-bezier(0.16, 1, 0.3, 1) var(--delay) forwards;
+	}
+	.bitstream {
+		stroke-dasharray: 3 9;
+		opacity: 0;
+		animation: stream 0.3s linear 1.1s 5;
+	}
+	.signal {
+		stroke-dasharray: 18 calc(var(--len) * 1px + 18px);
+		stroke-dashoffset: 18px;
+		animation: travel var(--dur) cubic-bezier(0.45, 0, 0.55, 1) var(--delay) infinite;
+	}
+	.led {
+		fill: #22c55e;
+		opacity: 0;
+	}
+	.done {
+		animation: light 0.15s ease-out 2.6s forwards;
+	}
+	.count {
+		animation: toggle var(--period) steps(1, end) 2.6s infinite;
+	}
+	.rgb {
+		animation:
+			light 0.15s ease-out 2.6s forwards,
+			hue 3s linear var(--phase) infinite;
+	}
+	.rgb-glyph {
+		animation: unlight 0.15s ease-out 2.6s forwards;
+	}
+	/* nothing runs until the board scrolls into view, and it pauses again offscreen */
+	svg:not(.is-live) * {
+		animation-play-state: paused;
+	}
+
+	@keyframes energize {
+		to { stroke-dashoffset: 0; }
+	}
+	@keyframes stream {
+		from { opacity: 1; stroke-dashoffset: 0; }
+		to { opacity: 1; stroke-dashoffset: -12; }
+	}
+	@keyframes travel {
+		0% { stroke-dashoffset: 18px; }
+		45%, 100% { stroke-dashoffset: calc(var(--len) * -1px); }
+	}
+	@keyframes light {
+		to { opacity: 1; }
+	}
+	@keyframes unlight {
+		to { opacity: 0; }
+	}
+	@keyframes toggle {
+		0% { opacity: 0; }
+		50%, 100% { opacity: 1; }
+	}
+	@keyframes hue {
+		/* six stops so the fades stay saturated instead of passing through brown */
+		0%, 100% { fill: #ef4444; }
+		17% { fill: #eab308; }
+		33% { fill: #22c55e; }
+		50% { fill: #06b6d4; }
+		67% { fill: #3b82f6; }
+		83% { fill: #d946ef; }
+	}
+
+	/* reduced motion: show the board already configured and running, with nothing moving */
+	@media (prefers-reduced-motion: reduce) {
+		.rail { stroke-dashoffset: 0; }
+		.bitstream, .signal { display: none; }
+		.done, .rgb, .count:nth-of-type(odd) { opacity: 1; }
+		.led, .rgb-glyph { animation: none; }
+		.rgb-glyph { opacity: 0; }
+		.rgb:nth-of-type(3n) { fill: #ef4444; }
+		.rgb:nth-of-type(3n + 1) { fill: #3b82f6; }
+	}
+</style>
+
+<script>
+	const board = document.getElementById('fpga-board');
+	if (board) {
+		new IntersectionObserver(([entry]) => board.classList.toggle('is-live', entry.isIntersecting)).observe(board);
+	}
+</script>
