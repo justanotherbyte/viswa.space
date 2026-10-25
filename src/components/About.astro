@@ -20,6 +20,12 @@ const links = [
 	{ label: 'LinkedIn', href: 'https://www.linkedin.com/in/mviswa/', icon: 'linkedin' },
 	{ label: 'Twitter', href: 'https://x.com/justanotherbyte', icon: 'x' },
 ] as const;
+
+// main engine nozzle exits in the orbiter's frame: x of the bell's mouth, its centreline, half its height
+const plumes = [
+	{ x: 326, y: 32, h: 8 },
+	{ x: 322, y: 48, h: 7 },
+];
 ---
 
 <section
@@ -90,6 +96,21 @@ const links = [
 						<path d="M252 87 L300 87" />
 						<path d="M304 28 L326 23 L326 41 L304 38 M304 43 L322 40 L322 56 L304 53" />
 						<path d="M296 68 L318 66 L318 72 L296 73" />
+					</g>
+
+					<!-- engine plumes: outer flame, hot core and shock diamonds, lit once the orbiter is drawn -->
+					<g class="ignite text-blue-500" stroke-width="0.9">
+						{
+							plumes.map(({ x, y, h }, i) => (
+								<g class="plume" style={`animation-duration: ${0.42 + i * 0.13}s`}>
+									<path d={`M${x} ${y - h} C${x + 16} ${y - h} ${x + 30} ${y - 3} ${x + 46} ${y} C${x + 30} ${y + 3} ${x + 16} ${y + h} ${x} ${y + h}`} opacity="0.7" />
+									<path d={`M${x} ${y - h / 2} C${x + 10} ${y - h / 2} ${x + 16} ${y - 1} ${x + 24} ${y} C${x + 16} ${y + 1} ${x + 10} ${y + h / 2} ${x} ${y + h / 2}`} />
+									{[9, 21].map((d) => (
+										<path class="diamond" d={`M${x + d} ${y} l3 -2.5 l3 2.5 l-3 2.5 Z`} fill="currentColor" stroke="none" />
+									))}
+								</g>
+							))
+						}
 					</g>
 				</g>
 
@@ -184,6 +205,39 @@ const links = [
 		}
 	}
 
+	/* engines light after the orbiter is drawn, then the plumes flicker from the nozzle mouth */
+	.ignite {
+		animation: fade 0.6s ease-out 2.2s backwards;
+	}
+
+	.plume {
+		transform-box: fill-box;
+		transform-origin: left center;
+		animation: flicker 0.42s linear infinite;
+	}
+
+	@keyframes flicker {
+		25% {
+			transform: scale(0.86, 0.94);
+		}
+		50% {
+			transform: scale(1.06, 1);
+		}
+		75% {
+			transform: scale(0.92, 0.97);
+		}
+	}
+
+	.diamond {
+		animation: shimmer 0.3s ease-in-out infinite alternate;
+	}
+
+	@keyframes shimmer {
+		to {
+			opacity: 0.4;
+		}
+	}
+
 	.orbit-dot {
 		stroke-dasharray: 0.01 999.99;
 		animation:
@@ -212,7 +266,10 @@ const links = [
 		.pulse,
 		.draw,
 		.fade,
-		.flow {
+		.flow,
+		.ignite,
+		.plume,
+		.diamond {
 			animation: none;
 		}
 	}
