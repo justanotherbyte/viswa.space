@@ -23,8 +23,9 @@ const links = [
 
 // main engine nozzle exits in the orbiter's frame: x of the bell's mouth, its centreline, half its height
 const plumes = [
-	{ x: 326, y: 32, h: 8 },
-	{ x: 322, y: 48, h: 7 },
+	{ x: 316, y: -15.5, h: 6 },
+	{ x: 318, y: 0, h: 8 },
+	{ x: 316, y: 15.5, h: 6 },
 ];
 ---
 
@@ -83,23 +84,23 @@ const plumes = [
 				<!-- ascent trajectory, carried on past the nose towards orbit -->
 				<path class="flow" d="M346 191 C352 178 357 166 368 148" stroke-width="0.75" stroke-dasharray="2 4" opacity="0.8" />
 
-				<!-- orbiter side profile, nose up and to the right; drawn nose-left in a 300-unit frame -->
-				<g transform="translate(336 196) rotate(-65) scale(-0.72 0.72) translate(0 -46)" stroke-width="1.1" stroke-linejoin="round">
-					<path class="draw" style="animation-delay: 800ms; animation-duration: 2.2s" d="M0 56 C0 44 12 34 32 31 L46 28 C54 20 70 17 86 20 L96 25 L232 25 L276 -26 L292 -26 L296 16 L304 22 L304 62 L296 68 L54 68 C24 68 4 64 0 56 Z" pathLength="1" />
-					<path class="draw" style="animation-delay: 1400ms" d="M120 68 L176 71 L262 94 L300 94 L300 68" pathLength="1" />
-					<g class="fade" style="animation-delay: 2000ms" stroke-width="0.75" opacity="0.8">
-						<path d="M246 25 C258 17 286 15 304 22" />
-						<path d="M285 -26 L289 14" />
-						<path d="M50 27 L58 22 L70 21 L69 27 Z M74 21 L84 21 L84 26 L73 27" />
-						<path d="M96 29 L232 29 M130 25 V29 M164 25 V29 M198 25 V29" />
-						<path d="M6 60 C30 64 70 66 120 68" />
-						<path d="M252 87 L300 87" />
-						<path d="M304 28 L326 23 L326 41 L304 38 M304 43 L322 40 L322 56 L304 53" />
-						<path d="M296 68 L318 66 L318 72 L296 73" />
+				<!-- orbiter planform to scale (37.2 m long, 23.8 m span), nose up and to the right; drawn nose at the origin, tail along +x -->
+				<g transform="translate(342 199) rotate(115) scale(0.62)" stroke-width="1.3" stroke-linejoin="round">
+					<!-- double delta: 81° glove, 45° main wing, elevons at the trailing edge -->
+					<path class="draw" style="animation-delay: 800ms; animation-duration: 2.2s" d="M0 0 C2 -12 22 -20 55 -20 L95 -20 L206 -37 L265 -96 L285 -96 L293 -27 L300 -27 L300 27 L293 27 L285 96 L265 96 L206 37 L95 20 L55 20 C22 20 2 12 0 0 Z" pathLength="1" />
+					<!-- three main engine bells; the upper one hides the inner halves of the lower pair -->
+					<path class="draw" style="animation-delay: 1400ms" d="M300 -5 L318 -9 L318 9 L300 5 M300 -10 L316 -22 L316 -9 M300 10 L316 22 L316 9" pathLength="1" />
+					<g class="fade" style="animation-delay: 2000ms" stroke-width="0.9" opacity="0.8">
+						<path d="M10 -7 C6 -3 6 3 10 7 M28 -12 C35 -4 35 4 28 12 M38 -8 h6 v5 h-6 Z M38 3 h6 v5 h-6 Z" />
+						<path d="M70 -16 L228 -16 M70 16 L228 16 M70 -16 V16 M70 0 L228 0 M110 -16 V16 M150 -16 V16 M190 -16 V16" />
+						<path d="M95 -20 L228 -20 M95 20 L228 20 M228 -20 C236 -27 246 -27 256 -27 L300 -27 M228 20 C236 27 246 27 256 27 L300 27" />
+						<path d="M232 0 L244 -2.5 L302 -2.5 M232 0 L244 2.5 L302 2.5" />
+						<path d="M275 -92 L284 -27 M275 92 L284 27 M279 -61 L289 -61 M279 61 L289 61" />
+						<path d="M300 -25 L307 -27 L307 -21 L300 -23 M300 25 L307 27 L307 21 L300 23" />
 					</g>
 
 					<!-- engine plumes: outer flame, hot core and shock diamonds, lit once the orbiter is drawn -->
-					<g class="ignite text-blue-500" stroke-width="0.9">
+					<g class="ignite text-blue-500" stroke-width="1.1">
 						{
 							plumes.map(({ x, y, h }, i) => (
 								<g class="plume" style={`animation-duration: ${0.42 + i * 0.13}s`}>
@@ -138,7 +139,7 @@ const plumes = [
 			<ul class="mt-6 max-w-[28rem] flex flex-wrap gap-2" aria-label="Interests">
 				{
 					tags.map(({ label, icon }) => (
-						<li class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-sm border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400">
+						<li class="inline-flex items-center gap-2 px-2.5 py-1 text-xs border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400">
 							<Icon name={icon} class="w-3.5 h-3.5 text-blue-500" />
 							{label}
 						</li>
