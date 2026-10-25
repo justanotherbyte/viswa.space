@@ -1,0 +1,55 @@
+{
+  "dependencies": "../node_modules",
+  "modelScripts": ["model.js"],
+  "drawings": [
+    {
+      "id": "revpi-original",
+      "title": "RevPi Connect 5, original GSE stack",
+      "description": "Concept teardown of the VEGA ground-station RevPi Connect 5 with the original Docker, InfluxDB, Grafana and Node-RED stack. The housing follows the datasheet; the board layout inside is illustrative.",
+      "parts": [
+        {"id": "shell-left", "name": "Housing, left half"},
+        {"id": "board", "name": "Base board"},
+        {"id": "cm5", "name": "Compute Module 5"},
+        {"id": "heatsink", "name": "Heat sink"},
+        {"id": "shell-right", "name": "Housing, right half"},
+        {"id": "bezel", "name": "Front bezel"},
+        {"id": "can-plugs", "name": "CAN plugs X2 X3"},
+        {"id": "power-plug", "name": "Power plug X4"},
+        {"id": "os", "name": "Ubuntu Linux"},
+        {"id": "docker", "name": "Docker engine"},
+        {"id": "nodered", "name": "Node-RED"},
+        {"id": "influxdb", "name": "InfluxDB"},
+        {"id": "grafana", "name": "Grafana"}
+      ],
+      "parameters": [],
+      "colors": {
+        "hues": {"bezel": 55, "board": 150, "cm5": 150, "os": 330, "docker": 240, "nodered": 20, "influxdb": 190, "grafana": 75},
+        "fills": ["bezel", "board", "cm5", "os", "docker", "nodered", "influxdb", "grafana"]
+      }
+    },
+    {
+      "id": "revpi-current",
+      "title": "RevPi Connect 5, current GSE stack",
+      "description": "Concept teardown of the VEGA ground-station RevPi Connect 5 running the custom Python GSE service with ZeroMQ links to the bunker laptop. The housing follows the datasheet; the board layout inside is illustrative.",
+      "parts": [
+        {"id": "shell-left", "name": "Housing, left half"},
+        {"id": "board", "name": "Base board"},
+        {"id": "cm5", "name": "Compute Module 5"},
+        {"id": "heatsink", "name": "Heat sink"},
+        {"id": "shell-right", "name": "Housing, right half"},
+        {"id": "bezel", "name": "Front bezel"},
+        {"id": "can-plugs", "name": "CAN plugs X2 X3"},
+        {"id": "power-plug", "name": "Power plug X4"},
+        {"id": "os", "name": "Ubuntu Linux"},
+        {"id": "gse", "name": "Python GSE service"},
+        {"id": "zmq-telemetry", "name": "ZeroMQ telemetry out"},
+        {"id": "zmq-commands", "name": "ZeroMQ commands in"}
+      ],
+      "parameters": [],
+      "colors": {
+        "hues": {"bezel": 55, "board": 150, "cm5": 150, "os": 330, "gse": 240, "zmq-telemetry": 190, "zmq-commands": 20},
+        "fills": ["bezel", "board", "cm5", "os", "gse", "zmq-telemetry", "zmq-commands"]
+      }
+    }
+  ]
+}

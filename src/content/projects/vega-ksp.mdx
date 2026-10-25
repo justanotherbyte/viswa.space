@@ -9,6 +9,12 @@ import FloatImage from '../../components/FloatImage.astro';
 import originalGseSoftware from '../../assets/articles/vega-ksp/original-gse.svg';
 import newGseSoftware from '../../assets/articles/vega-ksp/new-vega-gse.svg';
 import cactusEngine from '../../assets/articles/vega-ksp/cactus-engine.png';
+import Teardown from '../../components/Teardown.astro';
+import revpiOriginal from '../../data/teardowns/revpi-original.json';
+import revpiCurrent from '../../data/teardowns/revpi-current.json';
+import vegaRocket from '../../data/teardowns/vega-rocket.json';
+
+<Teardown data={vegaRocket} frames="/teardowns/vega-rocket-frames.json" caption="VEGA, nose to engine. The aft half moves to a second row so it fits." duration={3200} />
 
 It's been 6 months since I joined the [Karman Space Programme](https://karmanspace.co.uk) as an Avionics Engineer. The last 6 months have seen me working on our Ground Software and our Sensor Stack. Both have gone through a few iterations, which I'd like to walk you through today.
 
@@ -23,6 +29,16 @@ It's a huge rocket ($\approx$8m in length), using Isopropyl Alcohol (IPA) as it'
 Liquid Rockets present an interesting challenge for Avionics teams - feed-system valves, pressure & temperature sensors, reliable communication between nodes and the Flight Computer, physical requirements such as vibration and temperature, communication on the ground and in the air, ground system development and more!
 
 The engine you see here our Cactus Engine, giving us $\approx$ 7.4kN of thrust. You can view our hot-fire footage on [YouTube](https://www.youtube.com/watch?v=uD076ZBq0A4) thanks to [Nikon SLM](https://nikon-slm-solutions.com/).
+
+The teardown at the top of this page walks down the rocket from nose to tail:
+
+- **Nose cone and tip** hold the parachute.
+- **Av-Rec bay** (avionics-recovery) houses the MDRMs, which unlock at deployment, and a hand-sized N2 bottle with a solenoid valve that pushes the nose cone off.
+- **Avionics bay** carries the RevPi. A relay switches its power between the ground power link and the on-board batteries, and a USB hub connects the GPS and IMU to it.
+- **N2, LOX and IPA tanks**, in that order, with a feed section between each pair. The feed sections hold the valves and pressure transducers (PTs). Because IPA sits below LOX, the LOX line runs down the outside of the IPA tank.
+- **Engine bay** holds the main valves and the fins, with Cactus at the bottom.
+
+Four stringers run down every bay and join into four long stringers along the whole airframe, and skin panels cover everything in launch configuration. CAN and power wiring runs from the avionics bay all the way down. Motorized valves need both power and CAN, solenoid valves take a single digital signal, and the PTs only need power because they're current-loop sensors. REDS, our rapid depressurization system, is an Arduino wired to servos along the whole feed system that it actuates all at once to vent the tanks.
 
 # Ground Software
 
@@ -42,6 +58,16 @@ All of this ran on a [Revolution Pi](https://revolutionpi.com/en/) Connect 5 - a
 This software ran on our Ground Station Equipment (GSE) and the idea was for the GSE RevPi to expose its own network that we could connect to and
 open the Grafana dashboard in a web browser.
 
+Here's that RevPi torn down, from the housing up through the software running on it:
+
+<Teardown data={revpiOriginal} frames="/teardowns/revpi-original-frames.json" caption="RevPi Connect 5 with the original software stack" />
+
+- **Ubuntu Linux** is the base layer, with the drivers for the two CAN buses.
+- **Node-RED** runs directly on Ubuntu. It ingests CAN sensor readings, writes them to InfluxDB, runs the valve control logic and serves the `POST /valves` endpoint.
+- **Docker engine** runs the container that holds InfluxDB and Grafana.
+- **InfluxDB** stores every sensor reading as time-series data.
+- **Grafana** is the dashboard. It polls InfluxDB for its plots and sends `POST /valves` to Node-RED when someone clicks a valve toggle.
+
 This was a fantastic solution at the time. We had zero core software to maintain for the Ground System Equipment (GSE), and could instead focus all our
 attention on the actual Vehicle software.
 
@@ -58,6 +84,17 @@ There is now a main UI software, purely responsible for displaying telemetry dat
 to our GSE RevPi. The UI has 3 threads, a main UI thread running [dash](), a Data Acquisition Thread reading telemetry over the Ethernet link, and a Data Transmission Thread, publishing actuation commands from the UI. Communication between the threads is handled with last-value buffers (DAQ) and queues (DTM).
 
 This design also incorporates some fixes that our previous design assumed. The previous design assumed we'd be able to connect to the RevPi's LAN from the FAR bunker. I don't know why we ever assumed that would be possible - we now use a wired CAT6 Ethernet link communicating over [ZeroMQ](https://zeromq.org/) channels.
+
+On the RevPi itself, Docker, InfluxDB, Grafana and Node-RED are gone. Our own Python software replaces all four:
+
+<Teardown data={revpiCurrent} frames="/teardowns/revpi-current-frames.json" caption="The same RevPi with today's Python stack" />
+
+- **Ubuntu Linux** stays as the base layer.
+- **Python GSE service** is our custom software. It polls the sensors, drives the valve I/O and relays operator commands down to the rocket.
+- **ZeroMQ telemetry out** carries PT, TC and valve state packets over the CAT6 link to the laptop's Data Acquisition Thread.
+- **ZeroMQ commands in** receives actuation commands from the laptop's Data Transmission Thread.
+
+You can pull both versions apart yourself in the [interactive teardown](/teardowns/revpi-connect-5.html). The housing follows the RevPi Connect 5 datasheet, but the board layout inside is my own illustration, not the real PCB.
 
 # Sensor Stack
 
