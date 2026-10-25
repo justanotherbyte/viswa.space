@@ -3,6 +3,7 @@ import { Image } from 'astro:assets';
 import nasaImage from '../assets/nasa.jpg';
 import Icon from './Icon.astro';
 import { MY_EMAIL } from '../consts';
+import { R, CX, CY, meridians, parallels, equator } from '../lib/globe';
 
 const tags = [
 	{ label: 'Python & Systems', icon: 'terminal' },
@@ -19,24 +20,6 @@ const links = [
 	{ label: 'LinkedIn', href: 'https://www.linkedin.com/in/mviswa/', icon: 'linkedin' },
 	{ label: 'Twitter', href: 'https://x.com/justanotherbyte', icon: 'x' },
 ] as const;
-
-// wireframe globe in the panel's top-right corner, with Earth's 23.4° axial tilt and viewed from 20° above
-const R = 112, CX = 350, CY = 8;
-const deg = Math.PI / 180;
-const project = (lon: number, lat: number) => {
-	let x = Math.cos(lat) * Math.sin(lon), y = -Math.sin(lat);
-	const z = Math.cos(lat) * Math.cos(lon);
-	y = y * Math.cos(20 * deg) - z * Math.sin(20 * deg);
-	[x, y] = [x * Math.cos(23.4 * deg) - y * Math.sin(23.4 * deg), x * Math.sin(23.4 * deg) + y * Math.cos(23.4 * deg)];
-	return `${(CX + R * x).toFixed(1)} ${(CY + R * y).toFixed(1)}`;
-};
-const curve = (at: (t: number) => [number, number]) =>
-	'M' + Array.from({ length: 73 }, (_, i) => project(...at((i / 72) * 2 * Math.PI))).join(' L');
-const globe = [
-	...[0, 30, 60, 90, 120, 150].map((lon) => curve((t) => [lon * deg, t])),
-	...[-60, -30, 30, 60].map((lat) => curve((t) => [t, lat * deg])),
-];
-const equator = curve((t) => [t, 0]);
 ---
 
 <section
@@ -66,14 +49,15 @@ const equator = curve((t) => [t, 0]);
 		<div aria-hidden="true" class="art pointer-events-none absolute inset-0 text-zinc-400 dark:text-zinc-500">
 			<div class="dots absolute inset-0"></div>
 
-			<svg class="absolute top-0 right-0 w-[360px] h-[560px] max-xl:translate-x-12 max-xl:-translate-y-12" viewBox="0 0 360 560" fill="none" stroke="currentColor">
+			<svg id="about-globe" class="absolute top-0 right-0 w-[360px] h-[560px] max-xl:translate-x-12 max-xl:-translate-y-12" viewBox="0 0 360 560" fill="none" stroke="currentColor">
 				<g stroke-width="0.75" opacity="0.45">
-					{globe.map((d) => <path d={d} />)}
+					{meridians().map((d, i) => <path class="draw" style={`animation-delay: ${i * 70}ms`} d={d} pathLength="1" data-meridian />)}
+					{parallels.map((d, i) => <path class="draw" style={`animation-delay: ${200 + i * 70}ms`} d={d} pathLength="1" />)}
 				</g>
-				<path d={equator} stroke-width="0.75" stroke-dasharray="3 3" opacity="0.7" />
-				<circle cx={CX} cy={CY} r={R} stroke-width="1" opacity="0.7" />
+				<path class="fade" style="animation-delay: 600ms" d={equator} pathLength="504" stroke-width="0.75" stroke-dasharray="3 3" opacity="0.7" data-equator />
+				<circle class="draw" cx={CX} cy={CY} r={R} pathLength="1" stroke-width="1" opacity="0.7" />
 
-				<ellipse cx={CX} cy={CY} rx="250" ry="62" transform={`rotate(32 ${CX} ${CY})`} stroke-width="0.75" opacity="0.6" />
+				<ellipse class="draw" style="animation-delay: 500ms" cx={CX} cy={CY} rx="250" ry="62" transform={`rotate(32 ${CX} ${CY})`} pathLength="1" stroke-width="0.75" opacity="0.6" />
 				<ellipse
 					class="orbit-dot text-blue-500"
 					cx={CX}
@@ -91,13 +75,13 @@ const equator = curve((t) => [t, 0]);
 
 			<svg class="hidden xl:block absolute top-0 right-0 w-[360px] h-[560px]" viewBox="0 0 360 560" fill="none" stroke="currentColor">
 				<!-- ascent trajectory, carried on past the nose towards orbit -->
-				<path d="M346 191 C352 178 357 166 368 148" stroke-width="0.75" stroke-dasharray="2 4" opacity="0.8" />
+				<path class="flow" d="M346 191 C352 178 357 166 368 148" stroke-width="0.75" stroke-dasharray="2 4" opacity="0.8" />
 
 				<!-- orbiter side profile, nose up and to the right; drawn nose-left in a 300-unit frame -->
 				<g transform="translate(336 196) rotate(-65) scale(-0.72 0.72) translate(0 -46)" stroke-width="1.1" stroke-linejoin="round">
-					<path d="M0 56 C0 44 12 34 32 31 L46 28 C54 20 70 17 86 20 L96 25 L232 25 L276 -26 L292 -26 L296 16 L304 22 L304 62 L296 68 L54 68 C24 68 4 64 0 56 Z" />
-					<path d="M120 68 L176 71 L262 94 L300 94 L300 68" />
-					<g stroke-width="0.75" opacity="0.8">
+					<path class="draw" style="animation-delay: 800ms; animation-duration: 2.2s" d="M0 56 C0 44 12 34 32 31 L46 28 C54 20 70 17 86 20 L96 25 L232 25 L276 -26 L292 -26 L296 16 L304 22 L304 62 L296 68 L54 68 C24 68 4 64 0 56 Z" pathLength="1" />
+					<path class="draw" style="animation-delay: 1400ms" d="M120 68 L176 71 L262 94 L300 94 L300 68" pathLength="1" />
+					<g class="fade" style="animation-delay: 2000ms" stroke-width="0.75" opacity="0.8">
 						<path d="M246 25 C258 17 286 15 304 22" />
 						<path d="M285 -26 L289 14" />
 						<path d="M50 27 L58 22 L70 21 L69 27 Z M74 21 L84 21 L84 26 L73 27" />
@@ -110,12 +94,6 @@ const equator = curve((t) => [t, 0]);
 				</g>
 
 				<circle class="pulse text-blue-500" style="animation-delay: 2s" cx="346" cy="191" r="2" fill="currentColor" stroke="none" />
-
-				<g font-size="8" fill="currentColor" stroke="none" letter-spacing="0.12em" text-anchor="end">
-					<text x="344" y="490">EXPLORATION</text>
-					<text x="344" y="501">THROUGH</text>
-					<text x="344" y="512">ENGINEERING</text>
-				</g>
 			</svg>
 		</div>
 
@@ -173,9 +151,44 @@ const equator = curve((t) => [t, 0]);
 		mask-image: radial-gradient(ellipse 70% 90% at 100% 40%, #000, transparent 75%);
 	}
 
+	/* the line art plots itself in on load; dashoffset defaults to 0 so it shows if animation never runs */
+	.draw {
+		stroke-dasharray: 1;
+		animation: draw 1.6s cubic-bezier(0.23, 1, 0.32, 1) backwards;
+	}
+
+	@keyframes draw {
+		from {
+			stroke-dashoffset: 1;
+		}
+	}
+
+	.fade {
+		animation: fade 0.8s ease-out backwards;
+	}
+
+	@keyframes fade {
+		from {
+			opacity: 0;
+		}
+	}
+
+	/* ascent trajectory streams out past the nose */
+	.flow {
+		animation: flow 1.5s linear infinite;
+	}
+
+	@keyframes flow {
+		to {
+			stroke-dashoffset: -6;
+		}
+	}
+
 	.orbit-dot {
 		stroke-dasharray: 0.01 999.99;
-		animation: orbit 120s linear infinite;
+		animation:
+			orbit 120s linear infinite,
+			fade 0.6s ease-out 1.2s backwards;
 	}
 
 	@keyframes orbit {
@@ -196,8 +209,34 @@ const equator = curve((t) => [t, 0]);
 
 	@media (prefers-reduced-motion: reduce) {
 		.orbit-dot,
-		.pulse {
+		.pulse,
+		.draw,
+		.fade,
+		.flow {
 			animation: none;
 		}
 	}
 </style>
+
+<script>
+	import { meridians } from '../lib/globe';
+
+	// turn the globe west to east, 4° a second, only while it is on screen
+	const svg = document.getElementById('about-globe');
+	if (svg && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+		const lines = svg.querySelectorAll<SVGPathElement>('[data-meridian]');
+		const equator = svg.querySelector<SVGPathElement>('[data-equator]')!;
+		let frame = 0;
+		const spin = (now: number) => {
+			const deg = ((now / 1000) * 4) % 30;
+			meridians(deg).forEach((d, i) => lines[i].setAttribute('d', d));
+			// 504 / 360 keeps the dashes in step with the surface, and 30° moves exactly 7 dash periods
+			equator.style.strokeDashoffset = `${-deg * 1.4}`;
+			frame = requestAnimationFrame(spin);
+		};
+		new IntersectionObserver(([entry]) => {
+			cancelAnimationFrame(frame);
+			if (entry.isIntersecting) frame = requestAnimationFrame(spin);
+		}).observe(svg);
+	}
+</script>
