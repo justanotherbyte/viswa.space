@@ -85,6 +85,39 @@ function toAspect([x, y, w, h], aspect) {
   return [x - (W - w) / 2, y - (H - h) / 2, W, H].map(n => +n.toFixed(2));
 }
 
+// Below 640 px the side labels shrink past legibility, so the phone layout swaps
+// each for a numbered balloon in a column just outside the drawing and the page
+// lists the names under it. Returns the balloon group, its box and the names.
+const BALLOON = 7, BALLOON_SIZE = 9.5;
+function balloons(markup) {
+  const [geometry, labels] = markup.split('<g data-annotations="">');
+  const [x0, y0, x1, y1] = bounds(geometry, 0), sides = [[], []], names = [];
+  for (const [, x, y, anchor, name] of labels.matchAll(/ d="M([-\d.]+) ([-\d.]+)L.*?text-anchor="(\w+)">([^<]*)</g)) {
+    sides[+(anchor === 'start')].push({x: +x, y: +y, name});
+  }
+  const GAP = 2 * BALLOON + 1.5, r = n => +n.toFixed(2);
+  let out = '', box = [Infinity, Infinity, -Infinity, -Infinity];
+  sides.forEach((list, side) => {
+    if (!list.length) return;
+    // Stack down from each anchor's height, then pull back up past the drawing's foot, as the annotator does.
+    const ys = list.map(a => Math.max(y0 + BALLOON, a.y));
+    for (let i = 1; i < ys.length; i++) ys[i] = Math.max(ys[i], ys[i - 1] + GAP);
+    const overflow = Math.max(0, ys.at(-1) - (y1 - BALLOON));
+    for (let i = ys.length - 1; i >= 0; i--) ys[i] = Math.min(ys[i] - overflow, i < ys.length - 1 ? ys[i + 1] - GAP : Infinity);
+    const dir = side ? 1 : -1, edge = side ? x1 : x0, cx = r(edge + dir * (5 + BALLOON));
+    list.forEach(({x, y, name}, i) => {
+      names.push(name);
+      const cy = r(ys[i]);
+      out += `<path data-line-role="detail" d="M${x} ${y}L${r(edge + dir)} ${cy}L${r(cx - dir * BALLOON)} ${cy}"/>`
+        + `<circle data-ink-fill="" cx="${x}" cy="${y}" r=".6"/>`
+        + `<circle data-balloon="" cx="${cx}" cy="${cy}" r="${BALLOON}"/>`
+        + `<text data-ink-fill="" data-annotation="" x="${cx}" y="${r(cy + BALLOON_SIZE * .35)}" font-size="${BALLOON_SIZE}" text-anchor="middle">${names.length}</text>`;
+      box = union([box, [cx - BALLOON, cy - BALLOON, cx + BALLOON, cy + BALLOON]]);
+    });
+  });
+  return {labels: `<g data-annotations="">${out}</g>`, box, names};
+}
+
 const [configPath, figureDir, publicDir] = process.argv.slice(2);
 if (!configPath || !figureDir || !publicDir) throw Error('Usage: node frames.cjs drawing.json <figure dir> <public dir>');
 const {config, modelScripts} = load(configPath);
@@ -106,6 +139,12 @@ for (const d of config.drawings) {
   const viewBoxes = d.zoom ? boxes.map(b => toAspect(toViewBox(b), aspect)) : null;
   const viewBox = viewBoxes ? viewBoxes.at(-1) : toViewBox(union(boxes)).map(n => +n.toFixed(2));
   const figure = {viewBox, colors: d.colors ?? {hues: {}, fills: []}, title: d.title, description: d.description, final: slim(frames.at(-1))};
+  // shortcut: zooming drawings (the rocket) keep the scrolling layout; give them per-frame compact view boxes to fit phones.
+  if (!d.zoom) {
+    const {labels, box, names} = balloons(frames.at(-1));
+    const compactBox = union([...boxes.slice(0, -1), bounds(frames.at(-1).split('<g data-annotations="">')[0], 0), box]);
+    figure.compact = {viewBox: toViewBox(compactBox).map(n => +n.toFixed(2)), labels: slim(labels), names};
+  }
   fs.writeFileSync(path.join(figureDir, `${d.id}.json`), JSON.stringify(figure));
   const json = JSON.stringify({...dictionary(frames.map(slim)), viewBoxes});
   fs.writeFileSync(path.join(publicDir, `${d.id}-frames.json`), json);

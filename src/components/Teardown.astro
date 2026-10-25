@@ -9,6 +9,8 @@ interface Props {
 		title: string;
 		description: string;
 		final: string;
+		/** Phone layout: numbered balloons in place of the side labels. */
+		compact?: { viewBox: number[]; labels: string; names: string[] };
 	};
 	frames: string;
 	caption: string;
@@ -19,6 +21,7 @@ interface Props {
 const { data, frames, caption, duration = 1600 } = Astro.props;
 const id = "teardown-" + frames.replace(/^.*\/|-frames\.json$|\.json$/g, "");
 const { hues, fills } = data.colors;
+const { compact } = data;
 const scope = `#${id}`;
 const css = [
 	...Object.entries(hues).map(
@@ -44,6 +47,7 @@ const css = [
 >
 	<div class="teardown-scroll">
 		<svg
+			data-wide
 			viewBox={data.viewBox.join(" ")}
 			role="img"
 			aria-labelledby={`${id}-title ${id}-desc`}
@@ -52,7 +56,30 @@ const css = [
 			<desc id={`${id}-desc`}>{data.description}</desc>
 			<g data-frame set:html={data.final} />
 		</svg>
+		{compact && (
+			<svg
+				data-compact
+				viewBox={compact.viewBox.join(" ")}
+				role="img"
+				aria-labelledby={`${id}-title ${id}-desc`}
+			>
+				<g
+					data-frame
+					set:html={data.final.replace(/<g data-annotations="">[\s\S]*/, compact.labels)}
+				/>
+			</svg>
+		)}
 	</div>
+	{compact && (
+		<ol class="teardown-key mb-3 columns-2 gap-4 text-xs text-zinc-600 dark:text-zinc-300">
+			{compact.names.map((name, i) => (
+				<li class="flex gap-2 break-inside-avoid">
+					<span class="w-[2ch] shrink-0 text-right tabular-nums">{i + 1}</span>
+					{name}
+				</li>
+			))}
+		</ol>
+	)}
 	<figcaption
 		class="flex items-center justify-between gap-4 text-xs text-zinc-400"
 	>
@@ -79,6 +106,7 @@ const css = [
 		--ink: var(--graphite);
 		margin: 1.5rem 0;
 		clear: both;
+		container-type: inline-size;
 	}
 	@media (prefers-color-scheme: dark) {
 		.teardown {
@@ -89,7 +117,8 @@ const css = [
 			--ink-c: 0.12;
 		}
 	}
-	/* Below 640px the labels would shrink past legibility, so the drawing scrolls instead. */
+	/* Below 640px the labels would shrink past legibility. Drawings with a phone
+	   layout swap to numbered balloons and a key; the rest scroll. */
 	.teardown-scroll {
 		overflow-x: auto;
 		margin-bottom: 0.5rem;
@@ -99,6 +128,15 @@ const css = [
 		width: 100%;
 		min-width: 640px;
 		height: auto;
+	}
+	.teardown [data-compact],
+	.teardown-key {
+		display: none;
+	}
+	@container (width < 640px) {
+		.teardown:has([data-compact]) [data-wide] { display: none; }
+		.teardown [data-compact] { display: block; min-width: 0; }
+		.teardown-key { display: block; }
 	}
 	.teardown [data-fill] {
 		fill: none;
@@ -121,6 +159,7 @@ const css = [
 		animation: teardown-labels 400ms var(--ease-out) both;
 	}
 	.teardown [data-ink-fill] { fill: var(--ink); }
+	.teardown [data-balloon] { fill: var(--paper); stroke: var(--ink); stroke-width: 0.22; }
 	/* frames.cjs sets each label's font-size in sheet mm. */
 	.teardown [data-annotation] { font-family: inherit; }
 	@keyframes teardown-labels {
@@ -135,8 +174,11 @@ const css = [
 	const reduce = matchMedia("(prefers-reduced-motion: reduce)");
 
 	for (const figure of document.querySelectorAll<HTMLElement>("[data-teardown]")) {
-		const art = figure.querySelector("[data-frame]")!;
-		const svg = figure.querySelector("svg")!;
+		const wide = figure.querySelector<SVGSVGElement>("[data-wide]")!;
+		const compact = figure.querySelector<SVGSVGElement>("[data-compact]");
+		// The phone layout's balloons replace the side labels on the last frame.
+		const balloons = compact?.querySelector("[data-annotations]")?.outerHTML;
+		let svg = wide;
 		const button = figure.querySelector<HTMLButtonElement>("[data-toggle]")!;
 		const duration = Number(figure.dataset.duration);
 		let frames: string[] | null = null, table: string[] = [], viewBoxes: number[][] | null = null;
@@ -145,7 +187,9 @@ const css = [
 		const show = (i: number) => {
 			if (i === index || !frames) return;
 			// Paths shared between frames arrive as ~index into the table.
-			art.innerHTML = frames[i].replace(/~(\d+)/g, (_, n) => table[Number(n)]);
+			let html = frames[i].replace(/~(\d+)/g, (_, n) => table[Number(n)]);
+			if (svg === compact) html = html.replace(/<g data-annotations="">[\s\S]*/, balloons!);
+			svg.querySelector("[data-frame]")!.innerHTML = html;
 			if (viewBoxes) svg.setAttribute("viewBox", viewBoxes[i].join(" "));
 			index = i;
 		};
@@ -204,5 +248,15 @@ const css = [
 			{ threshold: 0.4 },
 		).observe(figure);
 		button.addEventListener("click", () => play(!exploded));
+		// CSS picks the layout from the figure's width; draw the current frame into whichever shows.
+		if (compact)
+			new ResizeObserver(() => {
+				const next = getComputedStyle(compact).display === "none" ? wide : compact;
+				if (next === svg) return;
+				svg = next;
+				const shown = index;
+				index = -1;
+				show(shown);
+			}).observe(figure);
 	}
 </script>
