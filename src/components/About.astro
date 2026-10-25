@@ -6,7 +6,7 @@ import { MY_EMAIL } from '../consts';
 import { R, CX, CY, meridians, parallels, equator } from '../lib/globe';
 
 const tags = [
-	{ label: 'Python & Systems', icon: 'terminal' },
+	{ label: 'Developer Tooling', icon: 'terminal' },
 	{ label: 'FPGA / Digital Design', icon: 'chip' },
 	{ label: 'Rocketry', icon: 'rocket' },
 	{ label: 'Robotics', icon: 'arm' },
@@ -42,14 +42,13 @@ const plumes = [
 			loading="eager"
 			class="absolute inset-0 w-full h-full object-cover object-[50%_45%]"
 		/>
-		<figcaption class="absolute left-0 bottom-0">
-			<a
-				href="/photography"
-				class="block px-2 py-1 text-xs text-zinc-300 bg-zinc-900/75 hover:text-white duration-200"
-			>
-				FIG. 01 / PHOTO BY ME
-			</a>
-		</figcaption>
+		<a
+			href="/photography"
+			class="absolute left-4 bottom-4 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-sm border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white active:opacity-75 focus-visible:outline-2 focus-visible:outline-blue-500 duration-200"
+		>
+			My Photography
+			<Icon name="next" class="w-4 h-4 text-blue-500" />
+		</a>
 	</figure>
 
 	<div class="relative overflow-hidden p-8">
@@ -132,14 +131,14 @@ const plumes = [
 				<a
 					href="https://imperial.ac.uk/"
 					class="underline hover:text-zinc-400 duration-200"
-				>Imperial College London</a>. I build software and hardware, from Python developer tools and
+				>Imperial College London</a>. I build software and hardware, from developer tools and
 				distributed systems to rocket avionics and FPGAs.
 			</p>
 
 			<ul class="mt-6 max-w-[28rem] flex flex-wrap gap-2" aria-label="Interests">
 				{
 					tags.map(({ label, icon }) => (
-						<li class="inline-flex items-center gap-2 px-2.5 py-1 text-xs border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400">
+						<li class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-sm border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400">
 							<Icon name={icon} class="w-3.5 h-3.5 text-blue-500" />
 							{label}
 						</li>
