@@ -1,0 +1,208 @@
+---
+// Inline exploded drawing that plays from assembled to exploded when scrolled
+// into view. Data comes from teardowns/<name>/frames.cjs: the server renders
+// the last (labelled) frame, and the browser fetches the rest on approach.
+interface Props {
+	data: {
+		viewBox: number[];
+		colors: { hues: Record<string, number>; fills: string[] };
+		title: string;
+		description: string;
+		final: string;
+	};
+	frames: string;
+	caption: string;
+	/** Milliseconds for a full assemble or explode. */
+	duration?: number;
+}
+
+const { data, frames, caption, duration = 1600 } = Astro.props;
+const id = "teardown-" + frames.replace(/^.*\/|-frames\.json$|\.json$/g, "");
+const { hues, fills } = data.colors;
+const scope = `#${id}`;
+const css = [
+	...Object.entries(hues).map(
+		([part, hue]) =>
+			`${scope} :is([data-item="${part}"],[data-fill="${part}"]){--hue:${hue};--ink:oklch(var(--ink-l) var(--ink-c) var(--hue))}`,
+	),
+	// Unfilled parts paint paper only where they cover a filled one, as the viewer does.
+	fills.length &&
+		`${scope} [data-fill]:where(${fills.map((p) => `[data-covers~="${p}"]`).join(",")}){--tint:var(--paper);fill:var(--tint);stroke:var(--tint)}`,
+	fills.length &&
+		`${scope} :is(${fills.map((p) => `[data-fill="${p}"]`).join(",")}){--tint:color-mix(in oklab,var(--ink) 18%,var(--paper));fill:var(--tint);stroke:var(--tint)}`,
+]
+	.filter(Boolean)
+	.join("\n");
+---
+
+<figure
+	id={id}
+	class="teardown"
+	data-teardown
+	data-frames={frames}
+	data-duration={duration}
+>
+	<div class="teardown-scroll">
+		<svg
+			viewBox={data.viewBox.join(" ")}
+			role="img"
+			aria-labelledby={`${id}-title ${id}-desc`}
+		>
+			<title id={`${id}-title`}>{data.title}</title>
+			<desc id={`${id}-desc`}>{data.description}</desc>
+			<g data-frame set:html={data.final} />
+		</svg>
+	</div>
+	<figcaption
+		class="flex items-center justify-between gap-4 text-xs text-zinc-400"
+	>
+		<span>{caption}</span>
+		<button
+			type="button"
+			data-toggle
+			disabled
+			class="shrink-0 rounded-sm border border-zinc-300 px-2 py-1 text-zinc-600 duration-200 hover:text-blue-600 active:opacity-75 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:text-blue-500"
+			>Assemble</button
+		>
+	</figcaption>
+</figure>
+
+<Fragment set:html={`<style>${css}</style>`} />
+
+<style is:global>
+	.teardown {
+		--paper: #fff;
+		--graphite: #27272a;
+		--label: #52525b;
+		--ink-l: 0.52;
+		--ink-c: 0.15;
+		--ink: var(--graphite);
+		margin: 1.5rem 0;
+		clear: both;
+	}
+	@media (prefers-color-scheme: dark) {
+		.teardown {
+			--paper: #18181b;
+			--graphite: #d4d4d8;
+			--label: #d4d4d8;
+			--ink-l: 0.8;
+			--ink-c: 0.12;
+		}
+	}
+	/* Below 640px the labels would shrink past legibility, so the drawing scrolls instead. */
+	.teardown-scroll {
+		overflow-x: auto;
+		margin-bottom: 0.5rem;
+	}
+	.teardown svg {
+		display: block;
+		width: 100%;
+		min-width: 640px;
+		height: auto;
+	}
+	.teardown [data-fill] {
+		fill: none;
+		stroke-width: 0.1;
+		stroke-linejoin: round;
+	}
+	.teardown path[data-line-role] {
+		fill: none;
+		stroke: var(--ink);
+		stroke-linejoin: round;
+		stroke-linecap: round;
+	}
+	.teardown [data-line-role="outline"] { stroke-width: 0.35; }
+	.teardown [data-line-role="edge"] { stroke-width: 0.22; }
+	.teardown [data-line-role="detail"] { stroke-width: 0.13; }
+	.teardown [data-line-role="texture"] { stroke-width: 0.09; }
+	.teardown [data-line-role="axis"] { stroke-width: 0.13; stroke-linecap: butt; stroke-dasharray: 6 1 1 1; }
+	.teardown [data-annotations] {
+		--ink: var(--label);
+		animation: teardown-labels 400ms var(--ease-out) both;
+	}
+	.teardown [data-ink-fill] { fill: var(--ink); }
+	/* frames.cjs sets each label's font-size in sheet mm. */
+	.teardown [data-annotation] { font-family: inherit; }
+	@keyframes teardown-labels {
+		from { opacity: 0; }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.teardown [data-annotations] { animation: none; }
+	}
+</style>
+
+<script>
+	const reduce = matchMedia("(prefers-reduced-motion: reduce)");
+
+	for (const figure of document.querySelectorAll<HTMLElement>("[data-teardown]")) {
+		const art = figure.querySelector("[data-frame]")!;
+		const svg = figure.querySelector("svg")!;
+		const button = figure.querySelector<HTMLButtonElement>("[data-toggle]")!;
+		const duration = Number(figure.dataset.duration);
+		let frames: string[] | null = null, table: string[] = [], viewBoxes: number[][] | null = null;
+		let index = -1, raf = 0, visible = false, played = false, exploded = true;
+
+		const show = (i: number) => {
+			if (i === index || !frames) return;
+			// Paths shared between frames arrive as ~index into the table.
+			art.innerHTML = frames[i].replace(/~(\d+)/g, (_, n) => table[Number(n)]);
+			if (viewBoxes) svg.setAttribute("viewBox", viewBoxes[i].join(" "));
+			index = i;
+		};
+		const play = (explode: boolean) => {
+			if (!frames) return;
+			exploded = explode;
+			button.textContent = explode ? "Assemble" : "Explode";
+			cancelAnimationFrame(raf);
+			const from = index, to = explode ? frames.length - 1 : 0;
+			if (reduce.matches || from === to) return show(to);
+			const start = performance.now(), span = (duration * Math.abs(to - from)) / (frames.length - 1);
+			// Frames are already sampled on an eased curve, so step through them linearly.
+			const tick = (now: number) => {
+				const t = Math.min(1, (now - start) / span);
+				show(Math.round(from + (to - from) * t));
+				if (t < 1) raf = requestAnimationFrame(tick);
+			};
+			raf = requestAnimationFrame(tick);
+		};
+		const autoplay = () => {
+			if (!frames || played || !visible || reduce.matches) return;
+			played = true;
+			play(true);
+		};
+
+		const load = () =>
+			fetch(figure.dataset.frames!)
+				.then((response) => (response.ok ? response.json() : Promise.reject(response.status)))
+				.then((loaded: { frames: string[]; table: string[]; viewBoxes: number[][] | null }) => {
+					({ frames, table, viewBoxes } = loaded);
+					index = frames.length - 1;
+					button.disabled = false;
+					// Start from the assembled object unless the reader prefers no motion.
+					if (!reduce.matches) {
+						show(0);
+						exploded = false;
+						button.textContent = "Explode";
+					}
+					autoplay();
+				})
+				.catch(() => {}); // the server-rendered exploded frame stays as a static figure
+
+		new IntersectionObserver(
+			([entry], observer) => {
+				if (!entry.isIntersecting) return;
+				observer.disconnect();
+				load();
+			},
+			{ rootMargin: "800px 0px" },
+		).observe(figure);
+		new IntersectionObserver(
+			([entry]) => {
+				visible = entry.isIntersecting;
+				autoplay();
+			},
+			{ threshold: 0.4 },
+		).observe(figure);
+		button.addEventListener("click", () => play(!exploded));
+	}
+</script>

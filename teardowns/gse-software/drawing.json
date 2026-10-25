@@ -1,0 +1,156 @@
+{
+  "dependencies": "../node_modules",
+  "modelScripts": [
+    "model.js"
+  ],
+  "drawings": [
+    {
+      "id": "gse-original",
+      "title": "Original GSE software",
+      "description": "Concept teardown of the original ground-station software as stacked layers: Ubuntu on the RevPi, Node-RED beside Docker, and InfluxDB and Grafana inside Docker. Hardware is grey; each program is a coloured plate.",
+      "initialView": "assembled",
+      "frames": 24,
+      "parts": [
+        {
+          "id": "host",
+          "name": "RevPi running Ubuntu"
+        },
+        {
+          "id": "docker",
+          "name": "Docker"
+        },
+        {
+          "id": "node-red",
+          "name": "Node-RED"
+        },
+        {
+          "id": "influxdb",
+          "name": "InfluxDB"
+        },
+        {
+          "id": "grafana",
+          "name": "Grafana"
+        }
+      ],
+      "parameters": [],
+      "colors": {
+        "hues": {
+          "docker": 240,
+          "node-red": 15,
+          "influxdb": 290,
+          "grafana": 55
+        },
+        "fills": [
+          "host",
+          "docker",
+          "node-red",
+          "influxdb",
+          "grafana"
+        ]
+      }
+    },
+    {
+      "id": "gse-current",
+      "title": "Current GSE software",
+      "description": "Concept teardown of the current ground-station software as stacked layers: three Python threads with a buffer, a queue and the Dash UI on the laptop, ZeroMQ channels over CAT6, and the Python control loop with its three jobs on the RevPi. Hardware is grey; each program is a coloured plate.",
+      "initialView": "assembled",
+      "frames": 24,
+      "parts": [
+        {
+          "id": "laptop",
+          "name": "Operator laptop"
+        },
+        {
+          "id": "thread-dtm",
+          "name": "DTM thread"
+        },
+        {
+          "id": "thread-main",
+          "name": "Main thread"
+        },
+        {
+          "id": "thread-daq",
+          "name": "DAQ thread"
+        },
+        {
+          "id": "buffer",
+          "name": "Last-value buffer"
+        },
+        {
+          "id": "queue",
+          "name": "Queue"
+        },
+        {
+          "id": "dash",
+          "name": "Dash UI"
+        },
+        {
+          "id": "cat6",
+          "name": "CAT6 cable"
+        },
+        {
+          "id": "zmq-telemetry",
+          "name": "ZeroMQ telemetry"
+        },
+        {
+          "id": "zmq-commands",
+          "name": "ZeroMQ commands"
+        },
+        {
+          "id": "revpi",
+          "name": "RevPi"
+        },
+        {
+          "id": "loop",
+          "name": "Control loop"
+        },
+        {
+          "id": "polling",
+          "name": "Sensor polling"
+        },
+        {
+          "id": "valve-io",
+          "name": "Valve I/O"
+        },
+        {
+          "id": "relay",
+          "name": "Command relay"
+        }
+      ],
+      "parameters": [],
+      "colors": {
+        "hues": {
+          "thread-dtm": 20,
+          "thread-main": 250,
+          "thread-daq": 150,
+          "buffer": 290,
+          "queue": 290,
+          "dash": 230,
+          "zmq-telemetry": 150,
+          "zmq-commands": 20,
+          "loop": 200,
+          "polling": 180,
+          "valve-io": 205,
+          "relay": 225
+        },
+        "fills": [
+          "laptop",
+          "thread-dtm",
+          "thread-main",
+          "thread-daq",
+          "buffer",
+          "queue",
+          "dash",
+          "cat6",
+          "zmq-telemetry",
+          "zmq-commands",
+          "revpi",
+          "loop",
+          "polling",
+          "valve-io",
+          "relay"
+        ]
+      }
+    }
+  ]
+}
