@@ -107,28 +107,9 @@ const equator = curve((t) => [t, 0]);
 						<path d="M304 28 L326 23 L326 41 L304 38 M304 43 L322 40 L322 56 L304 53" />
 						<path d="M296 68 L318 66 L318 72 L296 73" />
 					</g>
-					<g stroke-width="0.6" opacity="0.7">
-						<path d="M-28 46 H346" stroke-dasharray="10 3 2 3" />
-						<path d="M0 40 V52 M150 40 V52 M300 40 V52" />
-						<path d="M0 112 H300 M0 106 V118 M300 106 V118 M0 112 L6 109 M0 112 L6 115 M300 112 L294 109 M300 112 L294 115" />
-					</g>
-					<text x="150" y="108" transform="scale(-1 1)" font-size="9" fill="currentColor" stroke="none" text-anchor="middle" letter-spacing="0.08em" style="transform-box: fill-box; transform-origin: center">37.24 M</text>
 				</g>
 
-				<g font-size="8" fill="currentColor" stroke="none" letter-spacing="0.08em" opacity="0.9">
-					<text x="214" y="34">INC 51.6°</text>
-					<text x="246" y="140">R 6371 KM</text>
-				</g>
-				<path d="M240 132 L268 122" stroke-width="0.75" opacity="0.7" />
-
-				<!-- crosshair markers and coordinates -->
-				<g stroke-width="0.75" opacity="0.8">
-					<path d="M165 52 h10 M170 47 v10" />
-					<circle cx="170" cy="52" r="3.5" />
-					<path d="M330 470 h10 M335 465 v10" />
-				</g>
 				<circle class="pulse text-blue-500" style="animation-delay: 2s" cx="346" cy="191" r="2" fill="currentColor" stroke="none" />
-				<circle class="pulse text-blue-500" style="animation-delay: 4s" cx="335" cy="470" r="1.6" fill="currentColor" stroke="none" />
 
 				<g font-size="8" fill="currentColor" stroke="none" letter-spacing="0.12em" text-anchor="end">
 					<text x="344" y="490">EXPLORATION</text>
@@ -172,8 +153,8 @@ const equator = curve((t) => [t, 0]);
 				{
 					links.map(({ label, href, icon }) => (
 						<li>
-							<a href={href} class="inline-flex items-center gap-1.5 text-blue-500 hover:text-blue-700 duration-200">
-								<Icon name={icon} class="w-4 h-4" />
+							<a href={href} class="inline-flex items-center gap-1.5 text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white duration-200">
+								<Icon name={icon} class="w-4 h-4 text-blue-500" />
 								{label}
 							</a>
 						</li>
