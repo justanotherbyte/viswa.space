@@ -1,101 +1,300 @@
 ---
+import { Image } from 'astro:assets';
 import nasaImage from '../assets/nasa.jpg';
+import Icon from './Icon.astro';
 import { MY_EMAIL } from '../consts';
+import { R, CX, CY, meridians, parallels, equator } from '../lib/globe';
+
+const tags = [
+	{ label: 'Python & Systems', icon: 'terminal' },
+	{ label: 'FPGA / Digital Design', icon: 'chip' },
+	{ label: 'Rocketry', icon: 'rocket' },
+	{ label: 'Robotics', icon: 'arm' },
+	{ label: 'Quantum Computing', icon: 'atom' },
+] as const;
+
+const links = [
+	{ label: 'Email', href: `mailto:${MY_EMAIL}`, icon: 'mail' },
+	{ label: 'CV', href: '/data/cv.pdf', icon: 'file' },
+	{ label: 'GitHub', href: 'https://github.com/justanotherbyte', icon: 'github' },
+	{ label: 'LinkedIn', href: 'https://www.linkedin.com/in/mviswa/', icon: 'linkedin' },
+	{ label: 'Twitter', href: 'https://x.com/justanotherbyte', icon: 'x' },
+] as const;
+
+// main engine nozzle exits in the orbiter's frame: x of the bell's mouth, its centreline, half its height
+const plumes = [
+	{ x: 316, y: -15.5, h: 6 },
+	{ x: 318, y: 0, h: 8 },
+	{ x: 316, y: 15.5, h: 6 },
+];
 ---
 
 <section
 	id="aboutme"
-	class="grid md:grid-cols-2 sm:grid-cols-1 dark:bg-zinc-800 rounded-none bg-zinc-100 border border-zinc-300 dark:border-zinc-700"
+	class="grid md:grid-cols-2 sm:grid-cols-1 bg-zinc-100 dark:bg-zinc-800 rounded-none border border-zinc-300 dark:border-zinc-700"
 >
-	<div>
-		<img
-			src={nasaImage.src}
-			alt="Picture of me"
-			class="md:rounded-l-none w-full h-full object-cover sm:rounded-none"
-			width="600"
-			height="600"
+	<figure class="relative aspect-[4/3] md:aspect-auto border-b md:border-b-0 md:border-r border-zinc-300 dark:border-zinc-700">
+		<Image
+			src={nasaImage}
+			alt="The Space Shuttle replica Independence mounted on NASA's 747 carrier aircraft"
+			widths={[480, 800, 1200]}
+			sizes="(min-width: 768px) 50vw, 100vw"
 			loading="eager"
+			class="absolute inset-0 w-full h-full object-cover object-[50%_45%]"
 		/>
-	</div>
-	<div class="relative p-8">
-		<div class="flex space-x-2">
-			<h1 class="text-xl dark:text-white" id="welcomeText">Hey!</h1>
+		<figcaption class="absolute left-0 bottom-0">
+			<a
+				href="/photography"
+				class="block px-2 py-1 text-xs text-zinc-300 bg-zinc-900/75 hover:text-white duration-200"
+			>
+				FIG. 01 / PHOTO BY ME
+			</a>
+		</figcaption>
+	</figure>
+
+	<div class="relative overflow-hidden p-8">
+		<div aria-hidden="true" class="art pointer-events-none absolute inset-0 text-zinc-400 dark:text-zinc-500">
+			<div class="dots absolute inset-0"></div>
+
+			<svg id="about-globe" class="absolute top-0 right-0 w-[360px] h-[560px] max-xl:translate-x-12 max-xl:-translate-y-12" viewBox="0 0 360 560" fill="none" stroke="currentColor">
+				<g stroke-width="0.75" opacity="0.45">
+					{meridians().map((d, i) => <path class="draw" style={`animation-delay: ${i * 70}ms`} d={d} pathLength="1" data-meridian />)}
+					{parallels.map((d, i) => <path class="draw" style={`animation-delay: ${200 + i * 70}ms`} d={d} pathLength="1" />)}
+				</g>
+				<path class="fade" style="animation-delay: 600ms" d={equator} pathLength="504" stroke-width="0.75" stroke-dasharray="3 3" opacity="0.7" data-equator />
+				<circle class="draw" cx={CX} cy={CY} r={R} pathLength="1" stroke-width="1" opacity="0.7" />
+
+				<ellipse class="draw" style="animation-delay: 500ms" cx={CX} cy={CY} rx="250" ry="62" transform={`rotate(32 ${CX} ${CY})`} pathLength="1" stroke-width="0.75" opacity="0.6" />
+				<ellipse
+					class="orbit-dot text-blue-500"
+					cx={CX}
+					cy={CY}
+					rx="250"
+					ry="62"
+					transform={`rotate(32 ${CX} ${CY})`}
+					pathLength="1000"
+					stroke-width="4"
+					stroke-linecap="round"
+					stroke-dashoffset="-190"
+				/>
+				<circle class="pulse text-blue-500" cx="282" cy="96" r="2" fill="currentColor" stroke="none" />
+			</svg>
+
+			<svg class="hidden xl:block absolute top-0 right-0 w-[360px] h-[560px]" viewBox="0 0 360 560" fill="none" stroke="currentColor">
+				<!-- ascent trajectory, carried on past the nose towards orbit -->
+				<path class="flow" d="M346 191 C352 178 357 166 368 148" stroke-width="0.75" stroke-dasharray="2 4" opacity="0.8" />
+
+				<!-- orbiter planform to scale (37.2 m long, 23.8 m span), nose up and to the right; drawn nose at the origin, tail along +x -->
+				<g transform="translate(342 199) rotate(115) scale(0.62)" stroke-width="1.3" stroke-linejoin="round">
+					<!-- double delta: 81° glove, 45° main wing, elevons at the trailing edge -->
+					<path class="draw" style="animation-delay: 800ms; animation-duration: 2.2s" d="M0 0 C2 -12 22 -20 55 -20 L95 -20 L206 -37 L265 -96 L285 -96 L293 -27 L300 -27 L300 27 L293 27 L285 96 L265 96 L206 37 L95 20 L55 20 C22 20 2 12 0 0 Z" pathLength="1" />
+					<!-- three main engine bells; the upper one hides the inner halves of the lower pair -->
+					<path class="draw" style="animation-delay: 1400ms" d="M300 -5 L318 -9 L318 9 L300 5 M300 -10 L316 -22 L316 -9 M300 10 L316 22 L316 9" pathLength="1" />
+					<g class="fade" style="animation-delay: 2000ms" stroke-width="0.9" opacity="0.8">
+						<path d="M10 -7 C6 -3 6 3 10 7 M28 -12 C35 -4 35 4 28 12 M38 -8 h6 v5 h-6 Z M38 3 h6 v5 h-6 Z" />
+						<path d="M70 -16 L228 -16 M70 16 L228 16 M70 -16 V16 M70 0 L228 0 M110 -16 V16 M150 -16 V16 M190 -16 V16" />
+						<path d="M95 -20 L228 -20 M95 20 L228 20 M228 -20 C236 -27 246 -27 256 -27 L300 -27 M228 20 C236 27 246 27 256 27 L300 27" />
+						<path d="M232 0 L244 -2.5 L302 -2.5 M232 0 L244 2.5 L302 2.5" />
+						<path d="M275 -92 L284 -27 M275 92 L284 27 M279 -61 L289 -61 M279 61 L289 61" />
+						<path d="M300 -25 L307 -27 L307 -21 L300 -23 M300 25 L307 27 L307 21 L300 23" />
+					</g>
+
+					<!-- engine plumes: outer flame, hot core and shock diamonds, lit once the orbiter is drawn -->
+					<g class="ignite text-blue-500" stroke-width="1.1">
+						{
+							plumes.map(({ x, y, h }, i) => (
+								<g class="plume" style={`animation-duration: ${0.42 + i * 0.13}s`}>
+									<path d={`M${x} ${y - h} C${x + 16} ${y - h} ${x + 30} ${y - 3} ${x + 46} ${y} C${x + 30} ${y + 3} ${x + 16} ${y + h} ${x} ${y + h}`} opacity="0.7" />
+									<path d={`M${x} ${y - h / 2} C${x + 10} ${y - h / 2} ${x + 16} ${y - 1} ${x + 24} ${y} C${x + 16} ${y + 1} ${x + 10} ${y + h / 2} ${x} ${y + h / 2}`} />
+									{[9, 21].map((d) => (
+										<path class="diamond" d={`M${x + d} ${y} l3 -2.5 l3 2.5 l-3 2.5 Z`} fill="currentColor" stroke="none" />
+									))}
+								</g>
+							))
+						}
+					</g>
+				</g>
+
+				<circle class="pulse text-blue-500" style="animation-delay: 2s" cx="346" cy="191" r="2" fill="currentColor" stroke="none" />
+			</svg>
 		</div>
 
-		<br />
-		<p class="dark:text-zinc-200">
-			Hey there! I'm Viswa, an{' '}
-			<a
-				class="font-semibold underline dark:hover:text-zinc-400 duration-200"
-				href="https://www.imperial.ac.uk/study/courses/undergraduate/electronic-information-meng/"
-			>
-				Electronic and Information Engineering
-			</a>{' '}
-			student at{' '}
-			<a
-				class="text-blue-500 font-semibold underline duration-200 hover:text-blue-700"
-				href="https://imperial.ac.uk/"
-			>
-				Imperial College London
-			</a>
-			. My interests lie primarily in Robotics, FPGAs and Quantum Computing.
-		</p>
-		<br />
-		<p class="dark:text-zinc-200">
-			While my interests lie pretty far & wide, my ambition lies in
-			developing powerful Robotics for interstellar travel, conducting FPGA
-			research, both for Robotics and experimental Physics, and advancing
-			Quantum Computing.
-		</p>
-		<br />
-		<p class="dark:text-zinc-200">
-			Until now, I spent the better part of the previous 2 years studying
-			the{' '}
-			<a
-				href="https://www.ibo.org/programmes/diploma-programme/"
-				class="text-blue-500 font-semibold underline hover:text-blue-700 duration-200"
-			>
-				International Baccalaureate Diploma Programme
-			</a>{' '}
-			where I achieved 40/45 points with the top grade (7) in all my Higher
-			Level subjects.
-		</p>
-		<br />
-		<p class="dark:text-zinc-200">
-			The IB piqued my interest in academic research, having written papers
-			on{' '}
-			<a
-				class="underline duration-200 hover:text-zinc-400"
-				href="https://en.wikipedia.org/wiki/Nelder%E2%80%93Mead_method"
-			>
-				modelling populations using differential equations and
-				simplex-based optimizations
-			</a>{' '}
-			and experimenting with{' '}
-			<a class="underline duration-200 hover:text-zinc-400" href="/">
-				Euler's Pendulum and Lagrangian Mechanics
-			</a>{' '}
-			for the first time.
-		</p>
-		<br />
-		<p class="dark:text-zinc-200">
-			I'm also an avid{' '}
-			<a href="/publications" class="underline duration-200 hover:text-zinc-400">
-				writer
-			</a>
-			, calisthenics enjoyer and{' '}
-			<a href="/photography" class="underline duration-200 hover:text-zinc-400">
-				photographer
-			</a>{' '}
-			(the photograph here was taken by me!).
-		</p>
-		<br />
-		<p class="dark:text-zinc-200 [&>a]:text-blue-500 [&>a]:duration-200 [&>a]:hover:text-blue-700">
-			<a href=`mailto:${MY_EMAIL}`> Email</a> /
-			<a href="/data/cv.pdf"> CV</a> /
-			<a href="https://x.com/justanotherbyte"> Twitter</a> /
-			<a href="https://www.linkedin.com/in/mviswa/"> LinkedIn</a> /
-			<a href="https://github.com/justanotherbyte"> GitHub</a>
-		</p>
+		<div class="relative">
+			<p class="text-xs text-zinc-400">About me</p>
+
+			<h1 class="mt-6 text-2xl xl:text-3xl leading-tight dark:text-white">
+				Hey, I'm Viswa.
+				<span class="block mt-1 text-blue-500">Engineer, builder, and occasional rocket enthusiast.</span>
+			</h1>
+
+			<p class="mt-6 max-w-[27rem] dark:text-zinc-200">
+				Electronic and Information Engineering student at{' '}
+				<a
+					href="https://imperial.ac.uk/"
+					class="underline hover:text-zinc-400 duration-200"
+				>Imperial College London</a>. I build software and hardware, from Python developer tools and
+				distributed systems to rocket avionics and FPGAs.
+			</p>
+
+			<ul class="mt-6 max-w-[28rem] flex flex-wrap gap-2" aria-label="Interests">
+				{
+					tags.map(({ label, icon }) => (
+						<li class="inline-flex items-center gap-2 px-2.5 py-1 text-xs border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400">
+							<Icon name={icon} class="w-3.5 h-3.5 text-blue-500" />
+							{label}
+						</li>
+					))
+				}
+			</ul>
+
+			<hr class="mt-7 mb-4 h-0.5 border-t-0 bg-zinc-300 dark:bg-white/10" />
+
+			<ul class="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+				{
+					links.map(({ label, href, icon }) => (
+						<li>
+							<a href={href} class="inline-flex items-center gap-1.5 text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white duration-200">
+								<Icon name={icon} class="w-4 h-4 text-blue-500" />
+								{label}
+							</a>
+						</li>
+					))
+				}
+			</ul>
+		</div>
 	</div>
 </section>
+
+<style>
+	.dots {
+		background-image: radial-gradient(currentColor 0.8px, transparent 1.2px);
+		background-size: 16px 16px;
+		opacity: 0.35;
+		mask-image: radial-gradient(ellipse 70% 90% at 100% 40%, #000, transparent 75%);
+	}
+
+	/* the line art plots itself in on load; dashoffset defaults to 0 so it shows if animation never runs */
+	.draw {
+		stroke-dasharray: 1;
+		animation: draw 1.6s cubic-bezier(0.23, 1, 0.32, 1) backwards;
+	}
+
+	@keyframes draw {
+		from {
+			stroke-dashoffset: 1;
+		}
+	}
+
+	.fade {
+		animation: fade 0.8s ease-out backwards;
+	}
+
+	@keyframes fade {
+		from {
+			opacity: 0;
+		}
+	}
+
+	/* ascent trajectory streams out past the nose */
+	.flow {
+		animation: flow 1.5s linear infinite;
+	}
+
+	@keyframes flow {
+		to {
+			stroke-dashoffset: -6;
+		}
+	}
+
+	/* engines light after the orbiter is drawn, then the plumes flicker from the nozzle mouth */
+	.ignite {
+		animation: fade 0.6s ease-out 2.2s backwards;
+	}
+
+	.plume {
+		transform-box: fill-box;
+		transform-origin: left center;
+		animation: flicker 0.42s linear infinite;
+	}
+
+	@keyframes flicker {
+		25% {
+			transform: scale(0.86, 0.94);
+		}
+		50% {
+			transform: scale(1.06, 1);
+		}
+		75% {
+			transform: scale(0.92, 0.97);
+		}
+	}
+
+	.diamond {
+		animation: shimmer 0.3s ease-in-out infinite alternate;
+	}
+
+	@keyframes shimmer {
+		to {
+			opacity: 0.4;
+		}
+	}
+
+	.orbit-dot {
+		stroke-dasharray: 0.01 999.99;
+		animation:
+			orbit 120s linear infinite,
+			fade 0.6s ease-out 1.2s backwards;
+	}
+
+	@keyframes orbit {
+		to {
+			stroke-dashoffset: -1190;
+		}
+	}
+
+	.pulse {
+		animation: pulse 6s ease-in-out infinite;
+	}
+
+	@keyframes pulse {
+		50% {
+			opacity: 0.3;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.orbit-dot,
+		.pulse,
+		.draw,
+		.fade,
+		.flow,
+		.ignite,
+		.plume,
+		.diamond {
+			animation: none;
+		}
+	}
+</style>
+
+<script>
+	import { meridians } from '../lib/globe';
+
+	// turn the globe west to east, 4° a second, only while it is on screen
+	const svg = document.getElementById('about-globe');
+	if (svg && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+		const lines = svg.querySelectorAll<SVGPathElement>('[data-meridian]');
+		const equator = svg.querySelector<SVGPathElement>('[data-equator]')!;
+		let frame = 0;
+		const spin = (now: number) => {
+			const deg = ((now / 1000) * 4) % 30;
+			meridians(deg).forEach((d, i) => lines[i].setAttribute('d', d));
+			// 504 / 360 keeps the dashes in step with the surface, and 30° moves exactly 7 dash periods
+			equator.style.strokeDashoffset = `${-deg * 1.4}`;
+			frame = requestAnimationFrame(spin);
+		};
+		new IntersectionObserver(([entry]) => {
+			cancelAnimationFrame(frame);
+			if (entry.isIntersecting) frame = requestAnimationFrame(spin);
+		}).observe(svg);
+	}
+</script>
