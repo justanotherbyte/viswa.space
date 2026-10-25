@@ -18,7 +18,7 @@ function bounds(markup, size) {
     x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y);
   };
   for (const [, d] of markup.matchAll(/ d="([^"]*)"/g)) {
-    const n = d.match(/-?\d+(\.\d+)?/g).map(Number);
+    const n = (d.match(/-?\d+(\.\d+)?/g) ?? []).map(Number);
     for (let i = 0; i + 1 < n.length; i += 2) add(n[i], n[i + 1]);
   }
   for (const [, attrs, text] of markup.matchAll(/<text([^>]*)>([^<]*)<\/text>/g)) {
