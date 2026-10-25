@@ -1,101 +1,222 @@
 ---
+import { Image } from 'astro:assets';
 import nasaImage from '../assets/nasa.jpg';
+import Icon from './Icon.astro';
 import { MY_EMAIL } from '../consts';
+
+const tags = [
+	{ label: 'Python & Systems', icon: 'terminal' },
+	{ label: 'FPGA / Digital Design', icon: 'chip' },
+	{ label: 'Rocketry', icon: 'rocket' },
+	{ label: 'Robotics', icon: 'arm' },
+	{ label: 'Quantum Computing', icon: 'atom' },
+] as const;
+
+const links = [
+	{ label: 'Email', href: `mailto:${MY_EMAIL}`, icon: 'mail' },
+	{ label: 'CV', href: '/data/cv.pdf', icon: 'file' },
+	{ label: 'GitHub', href: 'https://github.com/justanotherbyte', icon: 'github' },
+	{ label: 'LinkedIn', href: 'https://www.linkedin.com/in/mviswa/', icon: 'linkedin' },
+	{ label: 'Twitter', href: 'https://x.com/justanotherbyte', icon: 'x' },
+] as const;
+
+// wireframe globe in the panel's top-right corner, with Earth's 23.4° axial tilt and viewed from 20° above
+const R = 112, CX = 350, CY = 8;
+const deg = Math.PI / 180;
+const project = (lon: number, lat: number) => {
+	let x = Math.cos(lat) * Math.sin(lon), y = -Math.sin(lat);
+	const z = Math.cos(lat) * Math.cos(lon);
+	y = y * Math.cos(20 * deg) - z * Math.sin(20 * deg);
+	[x, y] = [x * Math.cos(23.4 * deg) - y * Math.sin(23.4 * deg), x * Math.sin(23.4 * deg) + y * Math.cos(23.4 * deg)];
+	return `${(CX + R * x).toFixed(1)} ${(CY + R * y).toFixed(1)}`;
+};
+const curve = (at: (t: number) => [number, number]) =>
+	'M' + Array.from({ length: 73 }, (_, i) => project(...at((i / 72) * 2 * Math.PI))).join(' L');
+const globe = [
+	...[0, 30, 60, 90, 120, 150].map((lon) => curve((t) => [lon * deg, t])),
+	...[-60, -30, 30, 60].map((lat) => curve((t) => [t, lat * deg])),
+];
+const equator = curve((t) => [t, 0]);
 ---
 
 <section
 	id="aboutme"
-	class="grid md:grid-cols-2 sm:grid-cols-1 dark:bg-zinc-800 rounded-none bg-zinc-100 border border-zinc-300 dark:border-zinc-700"
+	class="grid md:grid-cols-2 sm:grid-cols-1 bg-zinc-100 dark:bg-zinc-800 rounded-none border border-zinc-300 dark:border-zinc-700"
 >
-	<div>
-		<img
-			src={nasaImage.src}
-			alt="Picture of me"
-			class="md:rounded-l-none w-full h-full object-cover sm:rounded-none"
-			width="600"
-			height="600"
+	<figure class="relative aspect-[4/3] md:aspect-auto border-b md:border-b-0 md:border-r border-zinc-300 dark:border-zinc-700">
+		<Image
+			src={nasaImage}
+			alt="The Space Shuttle replica Independence mounted on NASA's 747 carrier aircraft"
+			widths={[480, 800, 1200]}
+			sizes="(min-width: 768px) 50vw, 100vw"
 			loading="eager"
+			class="absolute inset-0 w-full h-full object-cover object-[50%_45%]"
 		/>
-	</div>
-	<div class="relative p-8">
-		<div class="flex space-x-2">
-			<h1 class="text-xl dark:text-white" id="welcomeText">Hey!</h1>
+		<figcaption class="absolute left-0 bottom-0">
+			<a
+				href="/photography"
+				class="block px-2 py-1 text-xs text-zinc-300 bg-zinc-900/75 hover:text-white duration-200"
+			>
+				FIG. 01 / PHOTO BY ME
+			</a>
+		</figcaption>
+	</figure>
+
+	<div class="relative overflow-hidden p-8">
+		<div aria-hidden="true" class="art pointer-events-none absolute inset-0 text-zinc-400 dark:text-zinc-500">
+			<div class="dots absolute inset-0"></div>
+
+			<svg class="absolute top-0 right-0 w-[360px] h-[560px] max-xl:translate-x-12 max-xl:-translate-y-12" viewBox="0 0 360 560" fill="none" stroke="currentColor">
+				<g stroke-width="0.75" opacity="0.45">
+					{globe.map((d) => <path d={d} />)}
+				</g>
+				<path d={equator} stroke-width="0.75" stroke-dasharray="3 3" opacity="0.7" />
+				<circle cx={CX} cy={CY} r={R} stroke-width="1" opacity="0.7" />
+
+				<ellipse cx={CX} cy={CY} rx="250" ry="62" transform={`rotate(32 ${CX} ${CY})`} stroke-width="0.75" opacity="0.6" />
+				<ellipse
+					class="orbit-dot text-blue-500"
+					cx={CX}
+					cy={CY}
+					rx="250"
+					ry="62"
+					transform={`rotate(32 ${CX} ${CY})`}
+					pathLength="1000"
+					stroke-width="4"
+					stroke-linecap="round"
+					stroke-dashoffset="-190"
+				/>
+				<circle class="pulse text-blue-500" cx="282" cy="96" r="2" fill="currentColor" stroke="none" />
+			</svg>
+
+			<svg class="hidden xl:block absolute top-0 right-0 w-[360px] h-[560px]" viewBox="0 0 360 560" fill="none" stroke="currentColor">
+				<!-- ascent trajectory, carried on past the nose towards orbit -->
+				<path d="M346 191 C352 178 357 166 368 148" stroke-width="0.75" stroke-dasharray="2 4" opacity="0.8" />
+
+				<!-- orbiter side profile, nose up and to the right; drawn nose-left in a 300-unit frame -->
+				<g transform="translate(336 196) rotate(-65) scale(-0.72 0.72) translate(0 -46)" stroke-width="1.1" stroke-linejoin="round">
+					<path d="M0 56 C0 44 12 34 32 31 L46 28 C54 20 70 17 86 20 L96 25 L232 25 L276 -26 L292 -26 L296 16 L304 22 L304 62 L296 68 L54 68 C24 68 4 64 0 56 Z" />
+					<path d="M120 68 L176 71 L262 94 L300 94 L300 68" />
+					<g stroke-width="0.75" opacity="0.8">
+						<path d="M246 25 C258 17 286 15 304 22" />
+						<path d="M285 -26 L289 14" />
+						<path d="M50 27 L58 22 L70 21 L69 27 Z M74 21 L84 21 L84 26 L73 27" />
+						<path d="M96 29 L232 29 M130 25 V29 M164 25 V29 M198 25 V29" />
+						<path d="M6 60 C30 64 70 66 120 68" />
+						<path d="M252 87 L300 87" />
+						<path d="M304 28 L326 23 L326 41 L304 38 M304 43 L322 40 L322 56 L304 53" />
+						<path d="M296 68 L318 66 L318 72 L296 73" />
+					</g>
+					<g stroke-width="0.6" opacity="0.7">
+						<path d="M-28 46 H346" stroke-dasharray="10 3 2 3" />
+						<path d="M0 40 V52 M150 40 V52 M300 40 V52" />
+						<path d="M0 112 H300 M0 106 V118 M300 106 V118 M0 112 L6 109 M0 112 L6 115 M300 112 L294 109 M300 112 L294 115" />
+					</g>
+					<text x="150" y="108" transform="scale(-1 1)" font-size="9" fill="currentColor" stroke="none" text-anchor="middle" letter-spacing="0.08em" style="transform-box: fill-box; transform-origin: center">37.24 M</text>
+				</g>
+
+				<g font-size="8" fill="currentColor" stroke="none" letter-spacing="0.08em" opacity="0.9">
+					<text x="214" y="34">INC 51.6°</text>
+					<text x="246" y="140">R 6371 KM</text>
+				</g>
+				<path d="M240 132 L268 122" stroke-width="0.75" opacity="0.7" />
+
+				<!-- crosshair markers and coordinates -->
+				<g stroke-width="0.75" opacity="0.8">
+					<path d="M165 52 h10 M170 47 v10" />
+					<circle cx="170" cy="52" r="3.5" />
+					<path d="M330 470 h10 M335 465 v10" />
+				</g>
+				<circle class="pulse text-blue-500" style="animation-delay: 2s" cx="346" cy="191" r="2" fill="currentColor" stroke="none" />
+				<circle class="pulse text-blue-500" style="animation-delay: 4s" cx="335" cy="470" r="1.6" fill="currentColor" stroke="none" />
+
+				<g font-size="8" fill="currentColor" stroke="none" letter-spacing="0.12em" text-anchor="end">
+					<text x="344" y="490">EXPLORATION</text>
+					<text x="344" y="501">THROUGH</text>
+					<text x="344" y="512">ENGINEERING</text>
+				</g>
+			</svg>
 		</div>
 
-		<br />
-		<p class="dark:text-zinc-200">
-			Hey there! I'm Viswa, an{' '}
-			<a
-				class="font-semibold underline dark:hover:text-zinc-400 duration-200"
-				href="https://www.imperial.ac.uk/study/courses/undergraduate/electronic-information-meng/"
-			>
-				Electronic and Information Engineering
-			</a>{' '}
-			student at{' '}
-			<a
-				class="text-blue-500 font-semibold underline duration-200 hover:text-blue-700"
-				href="https://imperial.ac.uk/"
-			>
-				Imperial College London
-			</a>
-			. My interests lie primarily in Robotics, FPGAs and Quantum Computing.
-		</p>
-		<br />
-		<p class="dark:text-zinc-200">
-			While my interests lie pretty far & wide, my ambition lies in
-			developing powerful Robotics for interstellar travel, conducting FPGA
-			research, both for Robotics and experimental Physics, and advancing
-			Quantum Computing.
-		</p>
-		<br />
-		<p class="dark:text-zinc-200">
-			Until now, I spent the better part of the previous 2 years studying
-			the{' '}
-			<a
-				href="https://www.ibo.org/programmes/diploma-programme/"
-				class="text-blue-500 font-semibold underline hover:text-blue-700 duration-200"
-			>
-				International Baccalaureate Diploma Programme
-			</a>{' '}
-			where I achieved 40/45 points with the top grade (7) in all my Higher
-			Level subjects.
-		</p>
-		<br />
-		<p class="dark:text-zinc-200">
-			The IB piqued my interest in academic research, having written papers
-			on{' '}
-			<a
-				class="underline duration-200 hover:text-zinc-400"
-				href="https://en.wikipedia.org/wiki/Nelder%E2%80%93Mead_method"
-			>
-				modelling populations using differential equations and
-				simplex-based optimizations
-			</a>{' '}
-			and experimenting with{' '}
-			<a class="underline duration-200 hover:text-zinc-400" href="/">
-				Euler's Pendulum and Lagrangian Mechanics
-			</a>{' '}
-			for the first time.
-		</p>
-		<br />
-		<p class="dark:text-zinc-200">
-			I'm also an avid{' '}
-			<a href="/publications" class="underline duration-200 hover:text-zinc-400">
-				writer
-			</a>
-			, calisthenics enjoyer and{' '}
-			<a href="/photography" class="underline duration-200 hover:text-zinc-400">
-				photographer
-			</a>{' '}
-			(the photograph here was taken by me!).
-		</p>
-		<br />
-		<p class="dark:text-zinc-200 [&>a]:text-blue-500 [&>a]:duration-200 [&>a]:hover:text-blue-700">
-			<a href=`mailto:${MY_EMAIL}`> Email</a> /
-			<a href="/data/cv.pdf"> CV</a> /
-			<a href="https://x.com/justanotherbyte"> Twitter</a> /
-			<a href="https://www.linkedin.com/in/mviswa/"> LinkedIn</a> /
-			<a href="https://github.com/justanotherbyte"> GitHub</a>
-		</p>
+		<div class="relative">
+			<p class="text-xs text-zinc-400">About me</p>
+
+			<h1 class="mt-6 text-2xl xl:text-3xl leading-tight dark:text-white">
+				Hey, I'm Viswa.
+				<span class="block mt-1 text-blue-500">Engineer, builder, and occasional rocket enthusiast.</span>
+			</h1>
+
+			<p class="mt-6 max-w-[27rem] dark:text-zinc-200">
+				Electronic and Information Engineering student at{' '}
+				<a
+					href="https://imperial.ac.uk/"
+					class="underline hover:text-zinc-400 duration-200"
+				>Imperial College London</a>. I build software and hardware, from Python developer tools and
+				distributed systems to rocket avionics and FPGAs.
+			</p>
+
+			<ul class="mt-6 max-w-[28rem] flex flex-wrap gap-2" aria-label="Interests">
+				{
+					tags.map(({ label, icon }) => (
+						<li class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-sm border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400">
+							<Icon name={icon} class="w-3.5 h-3.5 text-blue-500" />
+							{label}
+						</li>
+					))
+				}
+			</ul>
+
+			<hr class="mt-7 mb-4 h-0.5 border-t-0 bg-zinc-300 dark:bg-white/10" />
+
+			<ul class="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+				{
+					links.map(({ label, href, icon }) => (
+						<li>
+							<a href={href} class="inline-flex items-center gap-1.5 text-blue-500 hover:text-blue-700 duration-200">
+								<Icon name={icon} class="w-4 h-4" />
+								{label}
+							</a>
+						</li>
+					))
+				}
+			</ul>
+		</div>
 	</div>
 </section>
+
+<style>
+	.dots {
+		background-image: radial-gradient(currentColor 0.8px, transparent 1.2px);
+		background-size: 16px 16px;
+		opacity: 0.35;
+		mask-image: radial-gradient(ellipse 70% 90% at 100% 40%, #000, transparent 75%);
+	}
+
+	.orbit-dot {
+		stroke-dasharray: 0.01 999.99;
+		animation: orbit 120s linear infinite;
+	}
+
+	@keyframes orbit {
+		to {
+			stroke-dashoffset: -1190;
+		}
+	}
+
+	.pulse {
+		animation: pulse 6s ease-in-out infinite;
+	}
+
+	@keyframes pulse {
+		50% {
+			opacity: 0.3;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.orbit-dot,
+		.pulse {
+			animation: none;
+		}
+	}
+</style>
