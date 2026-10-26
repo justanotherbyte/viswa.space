@@ -1,0 +1,114 @@
+{
+  "dependencies": "../node_modules",
+  "modelScripts": [
+    "model.js"
+  ],
+  "drawings": [
+    {
+      "id": "avionics-bay",
+      "title": "VEGA avionics bay, exploded",
+      "description": "Concept teardown of VEGA's avionics bay with its skin unwrapped: a RevPi Connect 5 and a changeover relay on a DIN rail, a battery, a USB hub with the GPS and IMU, the CAN IO PLC with its PT shunt board, and a CANmod.temp for the thermocouples. Contents come from the team; sizes, placement and cable routes are illustrative.",
+      "initialView": "assembled",
+      "frames": 24,
+      "parts": [
+        {
+          "id": "skin",
+          "name": "Skin"
+        },
+        {
+          "id": "fwd-ring",
+          "name": "Bulkhead ring"
+        },
+        {
+          "id": "aft-ring",
+          "name": "Bulkhead ring"
+        },
+        {
+          "id": "plate",
+          "name": "Mounting plate"
+        },
+        {
+          "id": "din-rail",
+          "name": "DIN rail"
+        },
+        {
+          "id": "revpi",
+          "name": "RevPi Connect 5"
+        },
+        {
+          "id": "relay",
+          "name": "Power relay"
+        },
+        {
+          "id": "battery",
+          "name": "Battery"
+        },
+        {
+          "id": "usb-hub",
+          "name": "USB hub"
+        },
+        {
+          "id": "imu",
+          "name": "IMU"
+        },
+        {
+          "id": "gps",
+          "name": "GPS"
+        },
+        {
+          "id": "can-io",
+          "name": "CAN IO PLC"
+        },
+        {
+          "id": "shunt-board",
+          "name": "Shunt resistor board"
+        },
+        {
+          "id": "canmod",
+          "name": "CANmod.temp"
+        },
+        {
+          "id": "usb-cables",
+          "name": "USB cables"
+        },
+        {
+          "id": "power-leads",
+          "name": "Power leads"
+        },
+        {
+          "id": "sensor-leads",
+          "name": "PT + TC leads"
+        }
+      ],
+      "parameters": [],
+      "colors": {
+        "hues": {
+          "relay": 25,
+          "battery": 25,
+          "power-leads": 25,
+          "revpi": 260,
+          "usb-hub": 260,
+          "imu": 260,
+          "gps": 260,
+          "usb-cables": 260,
+          "can-io": 145,
+          "shunt-board": 145,
+          "canmod": 145,
+          "sensor-leads": 145
+        },
+        "fills": [
+          "relay",
+          "battery",
+          "revpi",
+          "usb-hub",
+          "imu",
+          "gps",
+          "can-io",
+          "shunt-board",
+          "canmod"
+        ]
+      },
+      "labelSize": 3.8
+    }
+  ]
+}
