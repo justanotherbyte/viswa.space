@@ -10,9 +10,9 @@ import cactusEngine from '../../assets/articles/vega-ksp/cactus-engine.png';
 import Teardown from '../../components/Teardown.astro';
 import gseOriginal from '../../data/teardowns/gse-original.json';
 import gseCurrent from '../../data/teardowns/gse-current.json';
-import vegaRocket from '../../data/teardowns/vega-rocket.json';
+import avionicsBay from '../../data/teardowns/avionics-bay.json';
 
-<Teardown data={vegaRocket} frames="/teardowns/vega-rocket-frames.json" caption="VEGA, nose to engine. The aft half moves to a second row so it fits." duration={3200} />
+<Teardown data={avionicsBay} frames="/teardowns/avionics-bay-frames.json" caption="VEGA's avionics bay with its skin off. Orange is power, blue is the RevPi and its USB devices, green is the sensor interfaces." duration={2600} />
 
 It's been 6 months since I joined the [Karman Space Programme](https://karmanspace.co.uk) as an Avionics Engineer. The last 6 months have seen me working on our Ground Software and our Sensor Stack. Both have gone through a few iterations, which I'd like to walk you through today.
 
@@ -28,11 +28,11 @@ Liquid Rockets present an interesting challenge for Avionics teams - feed-system
 
 The engine you see here our Cactus Engine, giving us $\approx$ 7.4kN of thrust. You can view our hot-fire footage on [YouTube](https://www.youtube.com/watch?v=uD076ZBq0A4) thanks to [Nikon SLM](https://nikon-slm-solutions.com/).
 
-The teardown at the top of this page walks down the rocket from nose to tail:
+From nose to tail, VEGA is made up of:
 
 - **Nose cone and tip** hold the parachute.
 - **Av-Rec bay** (avionics-recovery) houses the MDRMs, which unlock at deployment, and a hand-sized N2 bottle with a solenoid valve that pushes the nose cone off.
-- **Avionics bay** carries the RevPi. A relay switches its power between the ground power link and the on-board batteries, and a USB hub connects the GPS and IMU to it.
+- **Avionics bay** is the teardown at the top of this page. The RevPi and a relay sit on a DIN rail, and the relay switches the RevPi's power between ground power and the rocket's battery. A USB hub connects the GPS and IMU to the RevPi. The CAN IO PLC and its shunt resistor board read every PT on the rocket, and a CANmod.temp reads the thermocouples.
 - **N2, LOX and IPA tanks**, in that order, with a feed section between each pair. The feed sections hold the valves and pressure transducers (PTs). Because IPA sits below LOX, the LOX line runs down the outside of the IPA tank.
 - **Engine bay** holds the main valves and the fins, with Cactus at the bottom.
 

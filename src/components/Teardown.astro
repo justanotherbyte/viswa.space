@@ -1,16 +1,15 @@
 ---
 // Inline exploded drawing that plays from assembled to exploded when scrolled
-// into view. Data comes from teardowns/<name>/frames.cjs: the server renders
-// the last (labelled) frame, and the browser fetches the rest on approach.
+// into view. Data comes from teardowns/frames.cjs: the server renders an empty
+// box at the drawing's aspect, and the browser fetches every frame on approach.
 interface Props {
 	data: {
 		viewBox: number[];
 		colors: { hues: Record<string, number>; fills: string[] };
 		title: string;
 		description: string;
-		final: string;
-		/** Phone layout: numbered balloons in place of the side labels. */
-		compact?: { viewBox: number[]; labels: string; names: string[] };
+		/** Phone layout: numbered balloons, fetched with the frames, in place of the side labels. */
+		compact?: { viewBox: number[]; names: string[] };
 	};
 	frames: string;
 	caption: string;
@@ -54,7 +53,7 @@ const css = [
 		>
 			<title id={`${id}-title`}>{data.title}</title>
 			<desc id={`${id}-desc`}>{data.description}</desc>
-			<g data-frame set:html={data.final} />
+			<g data-frame />
 		</svg>
 		{compact && (
 			<svg
@@ -63,12 +62,12 @@ const css = [
 				role="img"
 				aria-labelledby={`${id}-title ${id}-desc`}
 			>
-				<g
-					data-frame
-					set:html={data.final.replace(/<g data-annotations="">[\s\S]*/, compact.labels)}
-				/>
+				<g data-frame />
 			</svg>
 		)}
+		<p data-status role="status" class="absolute inset-0 m-0 grid place-items-center text-xs text-zinc-400">
+			Loading teardown
+		</p>
 	</div>
 	{compact && (
 		<ol class="teardown-key mb-3 columns-2 gap-4 text-xs text-zinc-600 dark:text-zinc-300">
@@ -89,12 +88,19 @@ const css = [
 			data-toggle
 			disabled
 			class="shrink-0 rounded-sm border border-zinc-300 px-2 py-1 text-zinc-600 duration-200 hover:text-blue-600 active:opacity-75 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:text-blue-500"
-			>Assemble</button
+			>Explode</button
 		>
 	</figcaption>
 </figure>
 
 <Fragment set:html={`<style>${css}</style>`} />
+<!-- Frames only arrive through the script, so without it a note takes the empty figure's place. -->
+<noscript>
+	<Fragment set:html={`<style>#${id}{display:none}</style>`} />
+	<p class="not-prose clear-both my-6 rounded-sm border border-zinc-300 bg-zinc-100 px-4 py-10 text-center text-xs text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400">
+		Please enable JavaScript to see the teardown.
+	</p>
+</noscript>
 
 <style is:global>
 	.teardown {
@@ -120,6 +126,7 @@ const css = [
 	/* Below 640px the labels would shrink past legibility. Drawings with a phone
 	   layout swap to numbered balloons and a key; the rest scroll. */
 	.teardown-scroll {
+		position: relative;
 		overflow-x: auto;
 		margin-bottom: 0.5rem;
 	}
@@ -176,19 +183,20 @@ const css = [
 	for (const figure of document.querySelectorAll<HTMLElement>("[data-teardown]")) {
 		const wide = figure.querySelector<SVGSVGElement>("[data-wide]")!;
 		const compact = figure.querySelector<SVGSVGElement>("[data-compact]");
-		// The phone layout's balloons replace the side labels on the last frame.
-		const balloons = compact?.querySelector("[data-annotations]")?.outerHTML;
+		const status = figure.querySelector<HTMLElement>("[data-status]")!;
 		let svg = wide;
 		const button = figure.querySelector<HTMLButtonElement>("[data-toggle]")!;
 		const duration = Number(figure.dataset.duration);
 		let frames: string[] | null = null, table: string[] = [], viewBoxes: number[][] | null = null;
+		// The phone layout's balloons replace the side labels on the last frame.
+		let balloons = "";
 		let index = -1, raf = 0, visible = false, played = false, exploded = true;
 
 		const show = (i: number) => {
 			if (i === index || !frames) return;
 			// Paths shared between frames arrive as ~index into the table.
 			let html = frames[i].replace(/~(\d+)/g, (_, n) => table[Number(n)]);
-			if (svg === compact) html = html.replace(/<g data-annotations="">[\s\S]*/, balloons!);
+			if (svg === compact) html = html.replace(/<g data-annotations="">[\s\S]*/, balloons);
 			svg.querySelector("[data-frame]")!.innerHTML = html;
 			if (viewBoxes) svg.setAttribute("viewBox", viewBoxes[i].join(" "));
 			index = i;
@@ -218,19 +226,18 @@ const css = [
 		const load = () =>
 			fetch(figure.dataset.frames!)
 				.then((response) => (response.ok ? response.json() : Promise.reject(response.status)))
-				.then((loaded: { frames: string[]; table: string[]; viewBoxes: number[][] | null }) => {
+				.then((loaded: { frames: string[]; table: string[]; viewBoxes: number[][] | null; balloons: string | null }) => {
 					({ frames, table, viewBoxes } = loaded);
-					index = frames.length - 1;
-					button.disabled = false;
+					balloons = loaded.balloons ?? "";
 					// Start from the assembled object unless the reader prefers no motion.
-					if (!reduce.matches) {
-						show(0);
-						exploded = false;
-						button.textContent = "Explode";
-					}
+					exploded = reduce.matches;
+					show(exploded ? frames.length - 1 : 0);
+					button.textContent = exploded ? "Assemble" : "Explode";
+					button.disabled = false;
+					status.remove();
 					autoplay();
 				})
-				.catch(() => {}); // the server-rendered exploded frame stays as a static figure
+				.catch(() => (status.textContent = "Couldn't load the teardown. Reload the page to try again."));
 
 		new IntersectionObserver(
 			([entry], observer) => {

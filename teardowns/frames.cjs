@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Renders each drawing as an exploding flipbook for the inline article figure.
-// Writes <id>.json (view box, colors, last frame) for the server render and
-// <id>-frames.json (every frame) for the browser to fetch when the figure nears view.
+// Writes <id>.json (view box, colors, phone key) for the server render, which
+// reserves the figure's box, and <id>-frames.json (every frame, plus the phone
+// layout's balloons) for the browser to fetch and draw.
 // Usage: node frames.cjs drawing.json <figure dir> <public dir>
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm');
 const {RUNTIME, load} = require('./tools/teardown/scripts/config.cjs');
@@ -68,12 +69,14 @@ const slim = markup => markup
 // Path data repeats across frames wherever a part only translates, since compact()
 // makes everything after the first move relative. Long repeats go into a shared
 // table and frames reference them as ~index; Teardown.astro expands them.
+// The table groups entries by the path's attributes, so a path's versions from
+// successive frames sit together inside gzip's 32 KB window (40% smaller for the rocket).
 function dictionary(frames) {
-  const table = [], index = new Map();
-  const packed = frames.map(markup => markup.replace(/ d="(m-?[\d.]+[ -]?-?[\d.]+)([^"]{40,})"/g, (_, head, tail) => {
-    if (!index.has(tail)) index.set(tail, table.push(tail) - 1);
-    return ` d="${head}~${index.get(tail)}"`;
-  }));
+  const PATH = /(<path[^>]*?) d="(m-?[\d.]+[ -]?-?[\d.]+)([^"]{40,})"/g, tags = new Map();
+  for (const markup of frames) for (const [, tag, , tail] of markup.matchAll(PATH)) if (!tags.has(tail)) tags.set(tail, tag);
+  const table = [...tags.keys()].sort((a, b) => tags.get(a).localeCompare(tags.get(b)));
+  const index = new Map(table.map((tail, i) => [tail, i]));
+  const packed = frames.map(markup => markup.replace(PATH, (_, tag, head, tail) => `${tag} d="${head}~${index.get(tail)}"`));
   return {frames: packed, table};
 }
 
@@ -93,12 +96,14 @@ function balloons(markup) {
   const [geometry, labels] = markup.split('<g data-annotations="">');
   const [x0, y0, x1, y1] = bounds(geometry, 0), sides = [[], []], names = [];
   for (const [, x, y, anchor, name] of labels.matchAll(/ d="M([-\d.]+) ([-\d.]+)L.*?text-anchor="(\w+)">([^<]*)</g)) {
-    sides[+(anchor === 'start')].push({x: +x, y: +y, name});
+    // Centered labels (a model's own lanes) take the side nearer their anchor.
+    sides[+(anchor === 'start' || (anchor === 'middle' && +x > (x0 + x1) / 2))].push({x: +x, y: +y, name});
   }
   const GAP = 2 * BALLOON + 1.5, r = n => +n.toFixed(2);
   let out = '', box = [Infinity, Infinity, -Infinity, -Infinity];
   sides.forEach((list, side) => {
     if (!list.length) return;
+    list.sort((a, b) => a.y - b.y);
     // Stack down from each anchor's height, then pull back up past the drawing's foot, as the annotator does.
     const ys = list.map(a => Math.max(y0 + BALLOON, a.y));
     for (let i = 1; i < ys.length; i++) ys[i] = Math.max(ys[i], ys[i - 1] + GAP);
@@ -138,15 +143,17 @@ for (const d of config.drawings) {
   const final = toViewBox(boxes.at(-1)), aspect = final[2] / final[3];
   const viewBoxes = d.zoom ? boxes.map(b => toAspect(toViewBox(b), aspect)) : null;
   const viewBox = viewBoxes ? viewBoxes.at(-1) : toViewBox(union(boxes)).map(n => +n.toFixed(2));
-  const figure = {viewBox, colors: d.colors ?? {hues: {}, fills: []}, title: d.title, description: d.description, final: slim(frames.at(-1))};
+  const figure = {viewBox, colors: d.colors ?? {hues: {}, fills: []}, title: d.title, description: d.description};
+  let balloonMarkup = null;
   // shortcut: zooming drawings (the rocket) keep the scrolling layout; give them per-frame compact view boxes to fit phones.
   if (!d.zoom) {
     const {labels, box, names} = balloons(frames.at(-1));
     const compactBox = union([...boxes.slice(0, -1), bounds(frames.at(-1).split('<g data-annotations="">')[0], 0), box]);
-    figure.compact = {viewBox: toViewBox(compactBox).map(n => +n.toFixed(2)), labels: slim(labels), names};
+    figure.compact = {viewBox: toViewBox(compactBox).map(n => +n.toFixed(2)), names};
+    balloonMarkup = slim(labels);
   }
   fs.writeFileSync(path.join(figureDir, `${d.id}.json`), JSON.stringify(figure));
-  const json = JSON.stringify({...dictionary(frames.map(slim)), viewBoxes});
+  const json = JSON.stringify({...dictionary(frames.map(slim)), viewBoxes, balloons: balloonMarkup});
   fs.writeFileSync(path.join(publicDir, `${d.id}-frames.json`), json);
   console.log(`${d.id}: ${count} frames, ${(json.length / 1024).toFixed(0)} KB, view box ${viewBox.join(' ')}`);
 }
