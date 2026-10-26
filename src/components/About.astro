@@ -64,19 +64,6 @@ const plumes = [
 				<circle class="draw" cx={CX} cy={CY} r={R} pathLength="1" stroke-width="1" opacity="0.7" />
 
 				<ellipse class="draw" style="animation-delay: 500ms" cx={CX} cy={CY} rx="250" ry="62" transform={`rotate(32 ${CX} ${CY})`} pathLength="1" stroke-width="0.75" opacity="0.6" />
-				<ellipse
-					class="orbit-dot text-blue-500"
-					cx={CX}
-					cy={CY}
-					rx="250"
-					ry="62"
-					transform={`rotate(32 ${CX} ${CY})`}
-					pathLength="1000"
-					stroke-width="4"
-					stroke-linecap="round"
-					stroke-dashoffset="-190"
-				/>
-				<circle class="pulse text-blue-500" cx="282" cy="96" r="2" fill="currentColor" stroke="none" />
 			</svg>
 
 			<svg class="hidden xl:block absolute top-0 right-0 w-[360px] h-[560px]" viewBox="0 0 360 560" fill="none" stroke="currentColor">
@@ -114,7 +101,6 @@ const plumes = [
 					</g>
 				</g>
 
-				<circle class="pulse text-blue-500" style="animation-delay: 2s" cx="346" cy="191" r="2" fill="currentColor" stroke="none" />
 			</svg>
 		</div>
 
@@ -238,32 +224,7 @@ const plumes = [
 		}
 	}
 
-	.orbit-dot {
-		stroke-dasharray: 0.01 999.99;
-		animation:
-			orbit 120s linear infinite,
-			fade 0.6s ease-out 1.2s backwards;
-	}
-
-	@keyframes orbit {
-		to {
-			stroke-dashoffset: -1190;
-		}
-	}
-
-	.pulse {
-		animation: pulse 6s ease-in-out infinite;
-	}
-
-	@keyframes pulse {
-		50% {
-			opacity: 0.3;
-		}
-	}
-
 	@media (prefers-reduced-motion: reduce) {
-		.orbit-dot,
-		.pulse,
 		.draw,
 		.fade,
 		.flow,
@@ -283,13 +244,16 @@ const plumes = [
 	if (svg && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
 		const lines = svg.querySelectorAll<SVGPathElement>('[data-meridian]');
 		const equator = svg.querySelector<SVGPathElement>('[data-equator]')!;
-		let frame = 0;
+		let frame = 0, last = -Infinity;
 		const spin = (now: number) => {
+			frame = requestAnimationFrame(spin);
+			// 30 updates a second is enough: at 4°/s the surface moves at most 0.26 px per update
+			if (now - last < 32) return;
+			last = now;
 			const deg = ((now / 1000) * 4) % 30;
 			meridians(deg).forEach((d, i) => lines[i].setAttribute('d', d));
 			// 504 / 360 keeps the dashes in step with the surface, and 30° moves exactly 7 dash periods
 			equator.style.strokeDashoffset = `${-deg * 1.4}`;
-			frame = requestAnimationFrame(spin);
 		};
 		new IntersectionObserver(([entry]) => {
 			cancelAnimationFrame(frame);
