@@ -1,0 +1,13 @@
+{
+  "metadataGeneration": {
+    "branchName": {
+      "instructions": "Prefix branches with an appropriate feat/ fix/ chore/ etc. Similar to conventional commits."
+    },
+    "commitMessage": {
+      "instructions": "Use Conventional Commits with a Scope"
+    },
+    "pullRequest": {
+      "instructions": "Be concise. First section should include the problem it solved. Next section is 2 lines on how it was solved.\n\nInclude a more verbose explanation under a section you need to open up below this."
+    }
+  }
+}

@@ -31,7 +31,14 @@ const imgClass = `w-full h-40 object-cover ${positionClass} border-b border-zinc
 		typeof image === 'string' ? (
 			<img src={image} alt={title} class={imgClass} />
 		) : (
-			<Image src={image} alt={title} width={400} class={imgClass} />
+			<Image
+				src={image}
+				alt={title}
+				widths={[400, 800, 1200]}
+				sizes="(max-width: 767px) 100vw, 604px"
+				quality={90}
+				class={imgClass}
+			/>
 		)
 	}
 	<div class="p-4">

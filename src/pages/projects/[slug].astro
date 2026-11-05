@@ -51,7 +51,14 @@ const heroClass = `w-full max-h-96 object-cover ${positionClass} rounded-sm mb-4
 			typeof image === "string" ? (
 				<img src={image} alt={title} class={heroClass} />
 			) : (
-				<Image src={image} alt={title} width={1200} class={heroClass} />
+				<Image
+						src={image}
+						alt={title}
+						widths={[800, 1216, 1600]}
+						sizes="(max-width: 1280px) 100vw, 1216px"
+						quality={90}
+						class={heroClass}
+					/>
 			)
 		}
 		<h1 class="dark:text-white text-lg font-semibold mb-2">{title}</h1>
