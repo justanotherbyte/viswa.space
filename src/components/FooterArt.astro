@@ -1,0 +1,744 @@
+---
+import { W, H, G, BOARD, SUN, TOWER, ROCKET, n, rect, ring, sky, sun, clouds, mountains, valley, plateau, launch, board, cables } from '../lib/footerScene';
+
+const SX = 1426, SY = 554; // telemetry console screen origin
+const grid = Array.from({ length: 20 }, (_, i) => Array.from({ length: 5 }, (_, j) => `M${SX + 6 + i * 10} ${SY + 16 + j * 7}h.8v.8h-.8z`).join('')).join('');
+const rx = `${cables.coax}L425 542L425 562L408 562`;
+const ign = `M118 540C132 ${G + 22} 156 ${G + 14} 158 ${G}${cables.field.d}`;
+---
+
+<svg
+	id="launch-art"
+	viewBox={`0 0 ${W} ${H}`}
+	preserveAspectRatio="xMidYMax slice"
+	class="font-mono"
+	aria-hidden="true"
+	data-rocket={`${ROCKET.x} ${ROCKET.y}`}
+	data-yagi={`382 ${G - 34}`}
+>
+	<defs>
+		<pattern id="pour" width="3.2" height="3.2" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+			<path d="M0 0V3.2" class="pour-line" />
+		</pattern>
+		<path id="traces" d={board.trace} />
+		<path id="tower-path" d={launch.tower} />
+	</defs>
+
+	{/* far sky: galactic band, stars, two orbits, one satellite on the higher one */}
+	<g class="layer" data-depth="0">
+		<path d={sky.milky[0]} class="t-faint-fill" />
+		<path d={sky.milky[1]} class="t-dist-fill" />
+		<path d={sky.stars[0]} class="t-dist-fill" />
+		<path d={sky.stars[1]} class="t-sec-fill" />
+		<path d={sky.stars[2]} class="t-pri2-fill" />
+		{sky.sparkles.map((s) => (
+			<path d={`M${s.x - s.s} ${s.y + 0.5}h${s.s * 2 + 1}M${s.x + 0.5} ${s.y - s.s}v${s.s * 2 + 1}`} class="spark" />
+		))}
+		{sky.twinkles.map((s) => <rect class="twinkle" x={s.x} y={s.y} width="1.6" height="1.6" style={`animation-delay:-${s.d}s`} />)}
+		<path id="orbit" d={sky.orbits[0]} class="orbit" />
+		<path d={sky.orbits[1]} class="orbit faint" />
+		<g class="satellite">
+			<path d="M-4 -.6h3v1.2h-3zM1 -.6h3v1.2h-3z" class="t-sec-fill" />
+			<rect x="-.9" y="-.9" width="1.8" height="1.8" class="t-pri-fill" />
+			<animateMotion dur="140s" repeatCount="indefinite" rotate="auto"><mpath href="#orbit" /></animateMotion>
+		</g>
+	</g>
+
+	{/* the sun: sliced rows of characters, a dithered halo, two bands of haze across it */}
+	<g class="layer" data-depth="5">
+		<path d={sun.glow[2]} class="sun-4" />
+		<path d={sun.glow[1]} class="sun-3" />
+		<path d={sun.glow[0]} class="sun-2" />
+		<g class="sun-rows" xml:space="preserve">
+			{sun.rows.map((r) => <text x={r.x} y={r.y + 3} font-size="8" textLength={r.len} lengthAdjust="spacingAndGlyphs" class={r.cls}>{r.text}</text>)}
+		</g>
+		{sun.bands.map((b) => (
+			<>
+				<path d={b.cut} class="cut" />
+				<path d={b.streak} class="streak" />
+			</>
+		))}
+		{clouds.map((c) => (
+			<g class="cloud">
+				<path d={c.mask} class="mask" />
+				{c.d.map((d, i) => <path d={d} class={`c${i}`} />)}
+			</g>
+		))}
+	</g>
+
+	{/* three mountain ranges: each nearer range is brighter, more textured and catches more rim light */}
+	<g class="layer" data-depth="10">
+		<path d={mountains.far.fill} class="mask" />
+		<path d={mountains.far.dots} class="t-faint-fill" />
+		<path d={mountains.far.hatch} class="t-faint" />
+		<path d={mountains.far.snow} class="t-sec-fill" />
+		<path d={mountains.far.edge} class="far-edge" />
+		<path d={mountains.far.lit} class="rim far-rim" />
+	</g>
+	<g class="layer" data-depth="18">
+		<path d={mountains.mid.fill} class="mask" />
+		<path d={mountains.mid.dots} class="t-faint-fill" />
+		<path d={mountains.mid.hatch} class="t-dist" />
+		<path d={mountains.mid.edge} class="mid-edge" />
+		<path d={mountains.mid.lit} class="rim" />
+		{mountains.haze.map((d) => <path d={d} class="haze" />)}
+	</g>
+	<g class="layer" data-depth="28">
+		<path d={mountains.near.fill} class="mask" />
+		<path d={mountains.near.dots} class="t-dist-fill" />
+		<path d={mountains.near.hatch} class="t-sec dim" />
+		<path d={mountains.near.edge} class="near-edge" />
+		<path d={mountains.near.lit} class="rim near-rim" />
+	</g>
+
+	{/* everything from the valley floor forward moves together: ground, launch site, board, and the flight itself */}
+	<g class="layer" data-depth="40">
+		<g class="valley">
+			{valley.rows.map((d, i) => <path d={d} style={`stroke-dasharray:1 ${n(5 - i * 0.28)}`} class={i < 5 ? 't-faint' : 't-dist'} />)}
+			<path d={valley.river} class="mask" />
+			{valley.banks.map((d) => <path d={d} class="bank" />)}
+			{valley.flow.map((d) => <path d={d} class="flow" />)}
+			<path d={valley.glints} class="glint" />
+			<path d={valley.far} class="t-sec" />
+		</g>
+
+		<path d={plateau.fill} class="mask" />
+		<path d={plateau.edge} class="plateau-edge" />
+		<path d={plateau.tufts} class="t-sec" />
+		{plateau.strata.map((d, i) => <path d={d} class={i < 2 ? 't-sec dim' : 't-dist'} />)}
+		<path d={plateau.cracks} class="t-dist" />
+		<path d={plateau.pebbles} class="t-dist-fill" />
+		<path d={`M0 ${BOARD}H${W}`} class="board-edge" />
+
+		{/* the board: hatched pours cleared around copper, then traces, pads, parts, silkscreen */}
+		<g class="board">
+			{board.pours.map((d) => <path d={d} fill="url(#pour)" />)}
+			<use href="#traces" class="clearance" />
+			<path d={board.power} class="clearance wide" />
+			<use href="#traces" class="trace" />
+			<path d={board.power} class="power" />
+			<path d={board.body} class="body" />
+			<path d={board.pad} class="pad" />
+			<path d={board.via} class="via" />
+			<path d={board.dot} class="dot" />
+			<path d={board.silk} class="silk" />
+			{board.text.map((t) => <text x={t.x} y={t.y} font-size={t.s} class="silk-text">{t.t}</text>)}
+			{board.leds.map((l, i) => <rect id={`led${i}`} x={l.x} y={l.y} width="6" height="3.4" class={`led led${i}`} />)}
+		</g>
+
+		{/* telemetry console: header, live plot, logic channels, log and prompt */}
+		<g class="console">
+			<path d={rect(1408, 546, 236, 124)} class="module" />
+			<path d={`${ring(1414, 552, 2.4)}${ring(1638, 552, 2.4)}`} class="via" />
+			<path d={rect(SX, SY, 204, 92)} class="screen" />
+			<path d={`M${SX + 60} ${SY + 92}v8h84v-8`} class="t-dist" />
+			<g class="screen-text">
+				<text x={SX + 5} y={SY + 8} font-size="5.5" class="ui-pri">GS-01 · TLM 433.92 MHz</text>
+				<text id="disp-state" x={SX + 199} y={SY + 8} font-size="5.5" text-anchor="end" class="ui-sec">SAFE</text>
+				<rect id="disp-link" x={SX + 150} y={SY + 4} width="3.5" height="3.5" class="ui-blue" />
+				<path d={`M${SX + 4} ${SY + 11.5}h196`} class="ui-rule" />
+				<path d={grid} class="ui-grid" />
+				<text id="disp-axis" x={SX + 6} y={SY + 20} font-size="4" class="ui-sec">RF</text>
+				<path id="disp-wave" class="ui-wave" />
+				{['SCK', 'MOSI', 'CS'].map((l, i) => (
+					<>
+						<text x={SX + 5} y={SY + 51 + i * 7} font-size="4" class="ui-sec">{l}</text>
+						<path id={`disp-d${i}`} class="ui-logic" />
+					</>
+				))}
+				<text id="disp-l1" x={SX + 5} y={SY + 75} font-size="5" class="ui-sec">pad  continuity OK  12.6V</text>
+				<text id="disp-l2" x={SX + 5} y={SY + 82} font-size="5" class="ui-sec">gps  fix 3D  sats 11</text>
+				<text x={SX + 5} y={SY + 89.5} font-size="5" class="ui-pri">$ tlm --follow</text>
+				<rect x={SX + 51} y={SY + 85.6} width="2.8" height="4.6" class="cursor" />
+			</g>
+		</g>
+
+		<g class="cables">
+			<path d={cables.shelter} />
+			<path d={cables.coax} />
+			<path d={cables.field.d} />
+			{cables.field.stakes.map((x) => <path d={`M${x} ${G}v-8`} class="stake" />)}
+		</g>
+
+		{/* operations bunker: sandbags, door, a lit console window, antennas and status lights on the roof */}
+		<g class="site">
+			<path d={Array.from({ length: 9 }, (_, i) => `M${124 + (i % 3) * 5.4} ${G - 3 - Math.floor(i / 3) * 3.6}h4.4a1.6 1.6 0 0 1 0 3.2h-4.4a1.6 1.6 0 0 1 0-3.2z`).join('')} class="fill sec" />
+			<path d={`M140 ${G}V${G - 30}H214V${G}`} class="fill pri" />
+			<path d={`M138 ${G - 30}h78v-2.4h-78z`} class="fill pri" />
+			<path d={`M150 ${G}v-20h10v20M157.6 ${G - 10}h.8`} class="sec" />
+			<path d={rect(168, G - 24, 36, 14)} class="window" />
+			<path d={`M171 ${G - 20.5}h12M171 ${G - 17.5}h8M171 ${G - 14.5}h14`} class="ui-line" />
+			<path d={`M188 ${G - 14}l2-3 2 2 2-5 2 4 2-1 2 2`} class="ui-wave" />
+			<rect x="196" y={G - 28.4} width="2" height="2" class="light blue" />
+			<rect id="bunker-arm" x="200.5" y={G - 28.4} width="2" height="2" class="light off" />
+			<rect x="205" y={G - 28.4} width="2" height="2" class="light dim" />
+			<path d={`M146 ${G - 32.4}V${G - 66}M143 ${G - 58}h6M144 ${G - 50}h4`} class="sec" />
+			<path d={`M176 ${G - 32.4}v-6M168 ${G - 46}q5 10 16 2M176 ${G - 41}l4-6`} class="sec" />
+			<path d={rect(200, G - 38, 12, 5.6)} class="fill sec" />
+			<path d={`M202 ${G - 36.6}h8M202 ${G - 34.6}h8`} class="t-dist" />
+			{/* generator, and the range officer who cheers every launch */}
+			<path d={`M232 ${G}v-9h16v9M236 ${G - 9}v-4h2v4M235 ${G - 5}h10`} class="fill sec" />
+			<g class="person">
+				<circle cx="258" cy={G - 13.6} r="1.8" class="fill pri" />
+				<path d={`M258 ${G - 11.6}v6.6l-2 5M258 ${G - 5}l2 5`} class="pri" />
+				<path class="arms-down pri" d={`M255.6 ${G - 5.4}l2.4-4.6 2.4 4.6`} />
+				<path class="arms-up pri" d={`M255 ${G - 16}l3 5 3-5`} />
+			</g>
+
+			{/* tracking yagi on a tripod; the boom slews after the rocket */}
+			<path d={`M382 ${G - 34}V${G}M382 ${G - 14}l-10 14M382 ${G - 14}l10 14`} class="sec" />
+			<g id="yagi" transform={`rotate(-16 382 ${G - 34})`}>
+				<path d={`M370 ${G - 34}h46M372 ${G - 41}v14${[0, 1, 2, 3, 4, 5, 6].map((i) => `M${380 + i * 5.4} ${G - 40 + i * 0.4}v${12 - i * 0.8}`).join('')}`} class="pri" />
+				<path d={rect(377, G - 36, 5, 4)} class="fill sec" />
+			</g>
+
+			{/* lattice tower with rail, guy wires, blast deflector and a slab; the beacon pulses on top */}
+			<path d={launch.guys} class="guy" />
+			<use href="#tower-path" class="tower" />
+			<use href="#tower-path" id="tower-lit" class="tower-lit" />
+			<path d={launch.rail} class="rail" />
+			<rect x={TOWER - 1} y={launch.top - 8} width="2" height="2" class="light beacon" />
+			<path d={`M${TOWER - 24} ${G}v-3h56v3`} class="fill sec" />
+			<path d={`M${TOWER + 4} ${G - 3}L${TOWER + 24} ${G - 7}`} class="pri" />
+
+			{/* pad controller: relay box with status LEDs, whip antenna, battery, cable reel */}
+			<path d={rect(596, G - 12, 18, 12)} class="fill pri" />
+			<path d={`M599 ${G - 4}h12`} class="t-dist" />
+			<rect id="cont" x="599" y={G - 9.4} width="2" height="2" class="light amber continuity" />
+			<rect x="603.5" y={G - 9.4} width="2" height="2" class="light blue" />
+			<path d={`M612 ${G - 12}V${G - 40}`} class="sec" />
+			<circle cx="612" cy={G - 41} r="1.2" class="fill pri" />
+			<path d={`${rect(618, G - 8, 11, 8)}M620 ${G - 8}v-1.6M627 ${G - 8}v-1.6`} class="fill sec" />
+			<path d={`${ring(644, G - 8, 7)}M644 ${G - 15}V${G - 1}M637 ${G - 8}h14M639 ${G - 13}l10 10M649 ${G - 13}l-10 10M640 ${G}l4-8 4 8`} class="sec" />
+			<path d={`M596 ${G - 4}C584 ${G - 1} 570 ${G - 1} ${ROCKET.x} ${ROCKET.y + 1}`} class="leads" />
+
+			{/* weather mast: spinning anemometer and a windsock leaning downwind */}
+			<path d={`M690 ${G}V${G - 60}M690 ${G - 50}h10`} class="sec" />
+			<path d={`M700 ${G - 53}l18 1.6v3.2l-18 1.6zM706 ${G - 52.4}v5.2M712 ${G - 51.8}v4`} class="sock" />
+			<g class="anemometer">
+				<path d={`M684 ${G - 62}h12M690 ${G - 68}v12`} class="pri" />
+				<path d={`M684 ${G - 62}a1.6 1.6 0 0 0 0 3.2M696 ${G - 62}a1.6 1.6 0 0 1 0-3.2M690 ${G - 68}a1.6 1.6 0 0 1 3.2 0M690 ${G - 56}a1.6 1.6 0 0 0-3.2 0`} class="pri" />
+			</g>
+		</g>
+
+		{/* pulses retrace the routes they ride, drawn source to destination */}
+		<g class="pulses">
+			<path id="p-ign" d={ign} class="amber" />
+			<path id="p-rx" d={rx} />
+			{board.spi.map((d, i) => <path id={`p-spi${i}`} d={d} />)}
+			{board.bus.map((d, i) => <path id={`p-bus${i}`} d={d} />)}
+			{board.disp.map((d, i) => <path id={`p-disp${i}`} d={d} />)}
+			{board.riverTraces.map((d, i) => <path id={`p-river${i}`} d={valley.flow[i % 2] + d.replace('M', 'L')} class="ambient" />)}
+			<path id="p-flash" d={board.flash} class="ambient" />
+		</g>
+
+		<path id="ground-glow" d={plateau.glow} class="ground-glow" />
+
+		<g id="flight">
+			<path id="trail" class="trail" />
+			<g id="plume" />
+			<g id="rocket" transform={`translate(${ROCKET.x} ${ROCKET.y})`}>
+				<g id="chute" class="chute">
+					<path d="M-13 -128a13 7 0 0 1 26 0z" class="fill pri" />
+					<path d="M-6.5 -134.4v6.4M0 -135v7M6.5 -134.4v6.4" class="sec" />
+					<path d="M-13 -128L0 -104M13 -128L0 -104" class="guy" />
+				</g>
+				<path id="flame-outer" d="M-2.4 2.4L0 20L2.4 2.4Z" class="flame-outer" />
+				<path id="flame" d="M-1.4 2.4L0 11L1.4 2.4Z" class="flame" />
+				<path d="M-1.8 0h3.6l.7 2.4h-5z" class="fill sec" />
+				<path d="M0 -104C2.2 -98 3.4 -90 3.4 -80V-3L2.6 0H-2.6L-3.4 -3V-80C-3.4 -90 -2.2 -98 0 -104Z" class="fill bright" />
+				<path d="M-3.4 -78h3.4v7h-3.4zM0 -71h3.4v7h-3.4z" class="roll" />
+				<path d="M-3.4 -80h6.8M-3.4 -54h6.8M-3.4 -51h6.8M-3.4 -36h6.8M-3.4 -22h6.8" class="sec" />
+				<path d="M-1.6 -52.9h.9v.9h-.9zM.7 -52.9h.9v.9h-.9z" class="roll" />
+				<path d="M-3.4 -19L-11 -6.5V-1.5L-3.4 -3M3.4 -19L11 -6.5V-1.5L3.4 -3" class="fill bright" />
+				<path d="M-.5 -19h1v17h-1z" class="fill bright" />
+				<path d="M-4.7 -62h1.3v2.2h-1.3zM-4.7 -16h1.3v2.2h-1.3z" class="fill sec" />
+			</g>
+		</g>
+
+		<rect id="launch-hit" x={TOWER - 40} y={launch.top - 10} width="100" height={G - launch.top + 12} fill="transparent" />
+	</g>
+</svg>
+
+<style>
+	#launch-art {
+		--bg: #18181b;
+		--pri: #e0e2e8;
+		--pri2: #b8bbc7;
+		--sec: #777c91;
+		--dist: #454b63;
+		--faint: #303440;
+		--amber: #f59e42;
+		--blue: #6599ed;
+		--lav: #9d97cf;
+		--screen: #101217;
+		--sun0: #ffc480;
+		--sun1: #f59e42;
+		--sun2: #d9822f;
+		--sun3: #b4672c;
+		--sun4: #7a4825;
+		display: block;
+		width: 100%;
+		height: clamp(380px, 35vw, 700px);
+		margin-top: 2rem;
+		fill: none;
+		stroke-width: 0.7;
+		stroke-linecap: round;
+	}
+	@media (prefers-color-scheme: light) {
+		#launch-art {
+			--bg: #fff;
+			--pri: #18181b;
+			--pri2: #3f3f46;
+			--sec: #71717a;
+			--dist: #a1a1aa;
+			--faint: #d4d4d8;
+			--amber: #d97706;
+			--blue: #2563eb;
+			--lav: #7c6fc4;
+			--screen: #f4f4f5;
+			--sun0: #f59e0b;
+			--sun1: #ea8a1f;
+			--sun2: #d97706;
+			--sun3: #f2b36b;
+			--sun4: #f7d3a6;
+		}
+	}
+
+	/* tones */
+	/* strokes for linework, fills for the pixel paths */
+	.t-sec { stroke: var(--sec); }
+	.t-sec.dim, .t-dist { stroke: var(--dist); }
+	.t-faint { stroke: var(--faint); }
+	.t-faint-fill { fill: var(--faint); }
+	.t-dist-fill { fill: var(--dist); }
+	.t-sec-fill { fill: var(--sec); }
+	.t-pri2-fill { fill: var(--pri2); }
+	.t-pri-fill { fill: var(--pri); }
+	.mask { fill: var(--bg); stroke: none; }
+
+	/* sky */
+	.spark { stroke: var(--pri2); stroke-width: 0.6; }
+	.twinkle { fill: var(--pri); animation: twinkle 7s ease-in-out infinite; }
+	.orbit { stroke: var(--dist); stroke-dasharray: 1 5; }
+	.orbit.faint { stroke: var(--faint); stroke-dasharray: 1 7; }
+
+	/* sun */
+	.sun-rows text, .cloud text, .console text, .silk-text { stroke: none; }
+	.s0 { fill: var(--sun0); }
+	.s1 { fill: var(--sun1); }
+	.s2 { fill: var(--sun2); }
+	.s3 { fill: var(--sun3); }
+	.s4 { fill: var(--sun4); }
+	.sun-2 { fill: var(--sun2); }
+	.sun-3 { fill: var(--sun3); }
+	.sun-4 { fill: var(--sun4); }
+	.cut { stroke: var(--bg); stroke-width: 3; stroke-linecap: butt; }
+	.streak { stroke: var(--sun3); stroke-dasharray: 22 4 3 4; }
+	.cloud path:not(.mask) { stroke-width: 0.9; }
+	.c0 { stroke: var(--dist); fill: var(--dist); }
+	.c1 { stroke: var(--lav); fill: var(--lav); }
+	.c2 { stroke: var(--sun2); fill: var(--sun2); }
+	.cloud { animation: drift 90s ease-in-out infinite alternate; }
+	.cloud:nth-of-type(2n) { animation-duration: 120s; animation-direction: alternate-reverse; }
+
+	/* mountains */
+	.far-edge { stroke: var(--dist); stroke-width: 0.6; }
+	.mid-edge { stroke: var(--sec); stroke-width: 0.6; }
+	.near-edge { stroke: var(--sec); stroke-width: 0.8; }
+	.rim { stroke: var(--sun3); stroke-width: 0.7; }
+	.far-rim { stroke: var(--sun3); stroke-dasharray: 1 2; }
+	.near-rim { stroke: var(--sun2); stroke-width: 0.8; }
+	.haze { stroke: var(--faint); stroke-dasharray: 3 2 1 2; }
+
+	/* valley and plateau */
+	.bank { stroke: var(--sec); }
+	.flow { stroke: var(--blue); stroke-dasharray: 6 5; opacity: 0.55; animation: flow 6s linear infinite; }
+	.glint { fill: var(--sun1); }
+	.plateau-edge { stroke: var(--pri); stroke-width: 1; }
+	.board-edge { stroke: var(--sec); }
+
+	/* board */
+	.pour-line { stroke: var(--faint); stroke-width: 0.6; }
+	.clearance { stroke: var(--bg); stroke-width: 3.4; }
+	.clearance.wide { stroke-width: 5; }
+	.trace { stroke: var(--dist); stroke-width: 0.9; stroke-linejoin: round; }
+	.power { stroke: var(--dist); stroke-width: 2.4; stroke-linejoin: round; }
+	.body { fill: var(--bg); stroke: var(--sec); }
+	.pad { fill: var(--sec); stroke: none; }
+	.via { fill: var(--bg); stroke: var(--sec); stroke-width: 0.8; }
+	.dot { fill: var(--dist); stroke: none; }
+	.silk { stroke: var(--pri2); stroke-width: 0.45; }
+	.silk-text { fill: var(--sec); }
+	.led { fill: var(--dist); }
+	.led0 { animation: heartbeat 2.2s linear infinite; }
+	.led1 { animation: bit 1.6s steps(1, end) infinite; }
+	.led2 { animation: bit 3.2s steps(1, end) infinite; }
+	.led3 { animation: pps 1s linear infinite; }
+
+	/* console */
+	.module { fill: var(--bg); stroke: var(--sec); }
+	.screen { fill: var(--screen); stroke: var(--dist); }
+	.ui-pri { fill: var(--pri2); }
+	.ui-sec { fill: var(--sec); }
+	.ui-blue { fill: var(--blue); }
+	.ui-rule { stroke: var(--dist); stroke-dasharray: 1 1.5; }
+	.ui-grid { fill: var(--dist); }
+	.ui-wave { stroke: var(--blue); stroke-width: 0.7; stroke-linejoin: round; }
+	.ui-logic { stroke: var(--pri2); stroke-width: 0.5; }
+	.ui-line { stroke: var(--blue); stroke-width: 0.8; }
+	.cursor { fill: var(--pri2); animation: blink 1.1s steps(1, end) infinite; }
+
+	/* launch site */
+	.cables { stroke: var(--sec); }
+	.stake { stroke: var(--sec); }
+	.site .pri, .site.pri { stroke: var(--pri); }
+	.site .sec { stroke: var(--sec); }
+	.fill { fill: var(--bg); }
+	.fill.sec { stroke: var(--sec); }
+	.fill.pri { stroke: var(--pri2); }
+	.window { fill: var(--screen); stroke: var(--sec); }
+	.light { stroke: none; }
+	.light.blue { fill: var(--blue); }
+	.light.amber { fill: var(--amber); }
+	.light.dim, .light.off { fill: var(--dist); }
+	.light.on { fill: var(--amber); }
+	.beacon { fill: var(--amber); animation: beacon 2.8s ease-in-out infinite; }
+	.continuity { animation: blink 1s steps(1, end) infinite; }
+	.guy { stroke: var(--sec); stroke-dasharray: 1 2.4; }
+	.tower { stroke: var(--pri2); stroke-width: 0.6; }
+	.tower-lit { stroke: var(--amber); stroke-width: 0.6; opacity: 0; }
+	.rail { stroke: var(--pri); stroke-width: 1; }
+	.leads { stroke: var(--sec); stroke-width: 0.5; }
+	.sock { stroke: var(--amber); fill: var(--bg); stroke-width: 0.6; }
+	.anemometer { transform-box: fill-box; transform-origin: center; animation: spin 1.4s linear infinite; }
+	.arms-up { display: none; }
+	.cheer .arms-up { display: inline; }
+	.cheer .arms-down { display: none; }
+
+	/* rocket */
+	#rocket .bright { stroke: var(--pri); stroke-width: 0.8; }
+	#rocket .sec { stroke: var(--sec); stroke-width: 0.5; }
+	#rocket .fill.sec { stroke: var(--sec); }
+	.roll { fill: var(--pri); stroke: none; }
+	.flame { fill: var(--sun0); stroke: none; visibility: hidden; }
+	.flame-outer { fill: var(--amber); stroke: none; visibility: hidden; opacity: 0.85; }
+	.chute { visibility: hidden; }
+	.chute .pri { stroke: var(--pri2); }
+	.trail { stroke: var(--pri2); stroke-dasharray: 1 3; }
+	.ground-glow { fill: var(--amber); opacity: 0; }
+	/* runtime plume characters carry no scoping attribute, so they inherit from the group */
+	#plume { fill: var(--sec); stroke: none; }
+	#launch-hit { cursor: pointer; }
+
+	/* pulses */
+	.pulses path { stroke: var(--blue); stroke-width: 1.4; opacity: 0; }
+	.pulses .amber { stroke: var(--amber); }
+
+	#launch-art:not(.is-live) * { animation-play-state: paused; }
+
+	@keyframes twinkle { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; } }
+	@keyframes drift { to { transform: translateX(26px); } }
+	@keyframes flow { to { stroke-dashoffset: -22; } }
+	@keyframes spin { to { transform: rotate(360deg); } }
+	@keyframes blink { 50% { opacity: 0.12; } }
+	@keyframes beacon { 0%, 100% { opacity: 0.25; } 12% { opacity: 1; } 40% { opacity: 0.25; } }
+	@keyframes heartbeat { 0%, 6%, 14%, 20% { fill: var(--blue); } 3%, 10%, 24%, 100% { fill: var(--dist); } }
+	@keyframes bit { 50% { fill: var(--amber); } }
+	@keyframes pps { 0%, 6% { fill: var(--pri2); } 8%, 100% { fill: var(--dist); } }
+
+	@media (prefers-reduced-motion: reduce) {
+		#launch-art * { animation: none !important; }
+		.flow { opacity: 0.55; }
+		.led1, .led3 { fill: var(--amber); }
+		.led0 { fill: var(--blue); }
+		#launch-hit { cursor: default; }
+	}
+</style>
+
+<script>
+	const art = document.getElementById('launch-art') as SVGSVGElement | null;
+	if (art) {
+		const NS = 'http://www.w3.org/2000/svg';
+		const $ = <T extends Element = SVGElement>(sel: string) => art.querySelector(sel) as T;
+		const W = 1920, H = 660, FOCUS = 470;
+		const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+		// narrow screens frame the launch site instead of the middle of the panorama
+		const frame = () => {
+			const vw = (H * art.clientWidth) / art.clientHeight;
+			if (vw >= W) return art.setAttribute('viewBox', `0 0 ${W} ${H}`);
+			const x0 = Math.max(0, Math.min(W - vw, FOCUS - vw / 2));
+			art.setAttribute('viewBox', `${x0.toFixed(1)} 0 ${vw.toFixed(1)} ${H}`);
+		};
+		frame();
+		new ResizeObserver(frame).observe(art);
+
+		if (still) art.pauseAnimations();
+		else {
+			const [rx, ry] = art.dataset.rocket!.split(' ').map(Number);
+			const [yx, yy] = art.dataset.yagi!.split(' ').map(Number);
+			const rocket = $('#rocket'), plume = $('#plume'), trail = $('#trail'), chute = $('#chute'), flight = $('#flight');
+			const flame = $('#flame'), outer = $('#flame-outer'), yagi = $('#yagi'), person = $('.person');
+			const leds = [0, 1, 2, 3].map((i) => $(`#led${i}`));
+			const layers = [...art.querySelectorAll<SVGGElement>('.layer')];
+			const P = (id: string) => $<SVGPathElement>(`#${id}`);
+			let live = false, flying = false;
+
+			// parallax: nearer layers settle last as the footer scrolls into view
+			const parallax = () => {
+				const r = art.getBoundingClientRect();
+				const p = Math.min(1, Math.max(0, (innerHeight - r.top) / r.height));
+				for (const l of layers) l.style.transform = `translateY(${((1 - p) * +l.dataset.depth! * 1.4).toFixed(1)}px)`;
+			};
+			addEventListener('scroll', () => requestAnimationFrame(parallax), { passive: true });
+			parallax();
+
+			const el = (tag: string, attrs: Record<string, string | number>, parent: Element) => {
+				const e = document.createElementNS(NS, tag);
+				for (const k in attrs) e.setAttribute(k, String(attrs[k]));
+				parent.append(e);
+				return e;
+			};
+			const pulse = (path: SVGPathElement, speed = 480, dash = 16) => {
+				const len = path.getTotalLength();
+				return path.animate(
+					[
+						{ opacity: 1, strokeDasharray: `${dash} ${len + dash}`, strokeDashoffset: dash },
+						{ opacity: 1, strokeDasharray: `${dash} ${len + dash}`, strokeDashoffset: -len },
+					],
+					{ duration: (len / speed) * 1000, easing: 'cubic-bezier(.45,0,.55,1)' },
+				).finished;
+			};
+			const flash = (led: SVGElement, color = 'var(--amber)') =>
+				led.animate([{ fill: color }, { fill: color, offset: 0.35 }, { fill: 'var(--dist)' }], { duration: 380 });
+			const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+			// ---- telemetry console ----
+			const wave = $('#disp-wave'), digital = [0, 1, 2].map((i) => $(`#disp-d${i}`));
+			const l1 = $('#disp-l1'), l2 = $('#disp-l2'), state = $('#disp-state'), axis = $('#disp-axis');
+			const SX = 1426, SY = 554;
+			const logs = [
+				['pad  continuity OK  12.6V', 'gps  fix 3D  sats 11'],
+				['imu  bias cal OK  0.02g', 'baro 1013.2hPa  alt 0m'],
+				['wx   wind 6kt  gust 9kt', 'link snr +18dB  loss 0%'],
+				['fpga cfg DONE  crc OK', 'log  sd 41% free'],
+			];
+			let tick = 0, burst = 0, history: number[] = [];
+			const drawConsole = () => {
+				tick++;
+				if (flying && history.length) {
+					// altitude against time, scaled to the apogee
+					const pts = history.map((a, i) => `${(SX + 6 + i * 2.2).toFixed(1)} ${(SY + 43 - (a / 3100) * 26).toFixed(1)}`);
+					wave.setAttribute('d', 'M' + pts.join('L'));
+				} else {
+					if (tick % 46 === 0) burst = 18;
+					const pts = Array.from({ length: 97 }, (_, i) => {
+						const env = burst > 0 ? Math.exp(-(((i - 48) / 20) ** 2)) * 9 : 0;
+						const y = SY + 31 + Math.sin(i * 0.9 + tick * 0.7) * env + (Math.random() - 0.5) * 1.6;
+						return `${SX + 6 + i * 2} ${y.toFixed(1)}`;
+					});
+					wave.setAttribute('d', 'M' + pts.join('L'));
+				}
+				// SPI: chip select drops while a frame is clocked out
+				const active = flying || burst > 0;
+				const x0 = SX + 24, x1 = SX + 199, ph = (tick * 3) % 8;
+				let sck = `M${x0} ${SY + 50}`, mosi = `M${x0} ${SY + 57}`;
+				const cs = active ? `M${x0} ${SY + 61.5}H${x0 + 10}V${SY + 64}H${x1 - 14}V${SY + 61.5}H${x1}` : `M${x0} ${SY + 61.5}H${x1}`;
+				for (let x = x0 + 12 - ph; x < x1 - 16; x += 8) {
+					if (!active) break;
+					sck += `H${x}V${SY + 47.5}H${x + 4}V${SY + 50}`;
+					const hi = Math.random() < 0.5 ? SY + 54.5 : SY + 57;
+					mosi += `H${x}V${hi}`;
+				}
+				digital[0].setAttribute('d', sck + `H${x1}`);
+				digital[1].setAttribute('d', mosi + `V${SY + 57}H${x1}`);
+				digital[2].setAttribute('d', cs);
+				if (burst > 0) burst--;
+				if (!flying && tick % 30 === 0) {
+					const [a, b] = logs[(tick / 30) % logs.length];
+					l1.textContent = a;
+					l2.textContent = b;
+				}
+			};
+			setInterval(() => live && !document.hidden && drawConsole(), 110);
+			drawConsole();
+
+			// between launches the board idles: a signal now and then runs down the river into the FPGA
+			setInterval(() => {
+				if (!live || flying || document.hidden) return;
+				const ambient = [...art.querySelectorAll<SVGPathElement>('.pulses .ambient')];
+				pulse(ambient[Math.floor(Math.random() * ambient.length)], 220, 22);
+			}, 3800);
+
+			// ---- flight ----
+			// ignition delay, burn and apogee in seconds; altitude in scene units
+			const T0 = 0.35, TB = 2.1, TA = 9.2, APO = 420, WIND = 3.0, TILT = 0.06;
+			const A = APO / (0.5 * TB * TB + 0.5 * TB * (TA - TB)), Gc = (A * TB) / (TA - TB);
+			const h = (t: number) => (t < TB ? 0.5 * A * t * t : 0.5 * A * TB * TB + A * TB * (t - TB) - 0.5 * Gc * (t - TB) ** 2);
+			const vh = (t: number) => (t < TB ? A * t : A * TB - Gc * (t - TB));
+			const at = (T: number): { x: number; y: number; a: number; s: number } => {
+				const t = Math.max(0, T - T0);
+				if (t <= TA) {
+					const hh = h(t), vx = TILT * vh(t) + WIND * t;
+					return { x: rx + TILT * hh + 0.5 * WIND * t * t, y: ry - hh, a: t === 0 ? 0 : (Math.atan2(vx, vh(t)) * 180) / Math.PI, s: 1 - 0.42 * (hh / APO) };
+				}
+				// under the drogue: sinking, drifting downwind, swinging back from horizontal to hanging
+				const top = at(TA + T0), d = t - TA, e = Math.min(1, d / 1.8);
+				return { x: top.x + 9 * d, y: top.y + 14 * d, a: top.a * (1 - e) + 6 * Math.sin(d * 1.6) * e, s: top.s };
+			};
+			const place = (p: ReturnType<typeof at>) =>
+				rocket.setAttribute('transform', `translate(${p.x.toFixed(1)} ${p.y.toFixed(1)}) rotate(${p.a.toFixed(1)}) scale(${p.s.toFixed(3)})`);
+
+			// smoke characters swell and drift, faster the higher they are, so the column shears into a curve
+			const puff = (x: number, y: number, o: { size: number; life: number; dx?: number; dy?: number; grow?: number; hot?: boolean; chars?: string }) => {
+				const t = el('text', { 'font-size': o.size.toFixed(1) }, plume);
+				t.textContent = (o.chars ?? 'oO0o°.:')[Math.floor(Math.random() * (o.chars ?? 'oO0o°.:').length)];
+				const shear = 10 + (ry - y) * 0.16;
+				const dx = o.dx ?? shear * (o.life / 1000) * (0.7 + Math.random() * 0.6), dy = o.dy ?? -4 - Math.random() * 6;
+				t.animate(
+					[
+						{ transform: `translate(${x}px,${y}px) scale(1)`, opacity: 0.9, fill: o.hot ? 'var(--sun0)' : 'var(--pri2)' },
+						{ offset: 0.12, fill: o.hot ? 'var(--amber)' : 'var(--sec)', opacity: 0.8 },
+						{ transform: `translate(${x + dx}px,${y + dy}px) scale(${o.grow ?? 2})`, opacity: 0, fill: 'var(--dist)' },
+					],
+					{ duration: o.life, easing: 'cubic-bezier(.15,.6,.3,1)' },
+				).finished.then(() => t.remove());
+			};
+
+			const launch = async () => {
+				if (flying) return;
+				flying = true;
+				history = [];
+				state.textContent = 'ARM';
+				axis.textContent = 'ALT';
+				$('#bunker-arm').classList.add('on');
+				l1.textContent = 'seq  armed  igniter 1.9Ω';
+				for (const s of [3, 2, 1]) {
+					l2.textContent = `cnt  T-${s}`;
+					flash(leds[3]);
+					await wait(900);
+				}
+				await pulse(P('p-ign'), 900);
+
+				const glow = $('#ground-glow'), lit = $('#tower-lit');
+				const t0 = performance.now(), trailPts: string[] = [];
+				let lastPuff = 0, lastTrail = 0, lastPacket = 0, packets = 0, phase = 0;
+				state.textContent = 'FLT';
+				l2.textContent = 'cnt  T+0  ignition';
+				person.classList.add('cheer');
+				flame.style.visibility = outer.style.visibility = 'visible';
+				// ignition lights the pad, the tower and the dust around it, then fades with burnout
+				const lightCurve = [{ opacity: 0 }, { opacity: 1, offset: 0.04 }, { opacity: 0.7, offset: 0.2 }, { opacity: 0.85, offset: 0.55 }, { opacity: 0 }];
+				const burnMs = (T0 + TB + 1.2) * 1000;
+				glow.animate(lightCurve, { duration: burnMs });
+				lit.animate(lightCurve, { duration: burnMs });
+				for (let i = 0; i < 70; i++) {
+					const side = Math.random() < 0.5 ? -1 : 1, far = Math.random();
+					setTimeout(
+						() => puff(rx + side * Math.random() * 8, ry + 6 - Math.random() * 4, { size: 4.5 + far * 2.5, life: 5000 + Math.random() * 4500, dx: side * (24 + far * 110) + 16, dy: -2 - Math.random() * 16 * far, grow: 1.4 + far, hot: Math.random() < 0.45 }),
+						Math.random() * 900,
+					);
+				}
+
+				const step = (now: number) => {
+					const T = (now - t0) / 1000, p = at(T), t = T - T0;
+					place(p);
+					// the yagi slews after the rocket instead of snapping to it
+					const target = (Math.atan2(p.y - 40 * p.s - yy, p.x - yx) * 180) / Math.PI;
+					const cur = +(yagi.dataset.a ?? -16), next = cur + (target - cur) * 0.06;
+					yagi.dataset.a = String(next);
+					yagi.setAttribute('transform', `rotate(${next.toFixed(2)} ${yx} ${yy})`);
+
+					if (t < TB) {
+						const L = 14 + Math.random() * 10;
+						outer.setAttribute('d', `M-2.6 2.4Q-3 ${(L * 0.5).toFixed(1)} 0 ${L.toFixed(1)}Q3 ${(L * 0.5).toFixed(1)} 2.6 2.4Z`);
+						flame.setAttribute('d', `M-1.5 2.4L0 ${(L * 0.55).toFixed(1)}L1.5 2.4Z`);
+						if (t > 0 && now - lastPuff > 16) {
+							const r = (p.a * Math.PI) / 180, tail = 10 * p.s;
+							puff(p.x - Math.sin(r) * tail, p.y + Math.cos(r) * tail, { size: 4.5 * p.s + 1, life: 9000 + Math.random() * 5000, grow: 2.2, hot: Math.random() < 0.35 });
+							lastPuff = now;
+						}
+					} else if (phase === 0) {
+						phase = 1;
+						flame.style.visibility = outer.style.visibility = 'hidden';
+					}
+					if (t > TB && t < TA + 0.2 && now - lastTrail > 60) {
+						trailPts.push(`${p.x.toFixed(1)} ${(p.y + 3).toFixed(1)}`);
+						trail.setAttribute('d', 'M' + trailPts.join('L'));
+						lastTrail = now;
+					}
+					if (phase === 1 && t > TA + 0.2) {
+						phase = 2;
+						for (let i = 0; i < 12; i++) puff(p.x, p.y - 50 * p.s, { size: 4, life: 1600, dx: (Math.random() - 0.5) * 30, dy: (Math.random() - 0.5) * 20, grow: 1.6, hot: i < 4, chars: '*+.' });
+						chute.style.visibility = 'visible';
+						l2.textContent = 'rec  apogee  drogue out';
+					}
+					if (T > 4.6) person.classList.remove('cheer');
+
+					// telemetry: a packet hops to the yagi, then rides the coax, the radio, SPI, the bus and out to the console
+					if (t > 0.3 && t < TA + 9 && now - lastPacket > 520) {
+						lastPacket = now;
+						const k = packets++;
+						const alt = Math.max(0, Math.round((h(Math.min(t, TA)) / APO) * 3048 - (t > TA ? (t - TA) * 22 : 0)));
+						const vel = t < TA ? Math.round(vh(t) * 2.9) : -18;
+						const dot = el('rect', { width: 2, height: 2, fill: 'var(--amber)' }, plume);
+						dot.animate([{ transform: `translate(${p.x}px,${p.y - 40 * p.s}px)` }, { transform: `translate(${yx + 30}px,${yy}px)` }], { duration: 340 }).finished.then(async () => {
+							dot.remove();
+							await pulse(P('p-rx'), 600);
+							flash(leds[2], 'var(--blue)');
+							await pulse(P(`p-spi${k % 4}`), 300);
+							await pulse(P(`p-bus${k % 4}`), 1100, 22);
+							flash(leds[1]);
+							await pulse(P(`p-disp${k % 4}`), 600);
+							history.push(alt);
+							l1.textContent = `T+${t.toFixed(1).padStart(4, '0')}  ALT ${String(alt).padStart(4, '0')}m  VEL ${vel >= 0 ? '+' : ''}${vel}m/s`;
+						});
+					}
+					if (T < T0 + TA + 11) return requestAnimationFrame(step);
+
+					// recovery: the flight and its smoke fade, then a fresh rocket sits on the rail
+					flight.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 1800, fill: 'forwards' }).finished.then(async () => {
+						trail.removeAttribute('d');
+						chute.style.visibility = 'hidden';
+						place({ x: rx, y: ry, a: 0, s: 1 });
+						yagi.dataset.a = '-16';
+						yagi.setAttribute('transform', `rotate(-16 ${yx} ${yy})`);
+						state.textContent = 'SAFE';
+						axis.textContent = 'RF';
+						$('#bunker-arm').classList.remove('on');
+						l2.textContent = 'rec  landed  1.2km NE';
+						await wait(1400);
+						flight.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 2200, fill: 'forwards' });
+						flying = false;
+						schedule(42000);
+					});
+				};
+				requestAnimationFrame(step);
+			};
+
+			let timer = 0;
+			const schedule = (ms: number) => {
+				clearTimeout(timer);
+				timer = window.setTimeout(() => (live && !document.hidden ? launch() : schedule(4000)), ms);
+			};
+			let first = true;
+			new IntersectionObserver(
+				([e]) => {
+					live = e.isIntersecting;
+					art.classList.toggle('is-live', live);
+					live ? art.unpauseAnimations() : art.pauseAnimations();
+					if (live && first) {
+						first = false;
+						schedule(2400);
+					}
+				},
+				{ threshold: 0.3 },
+			).observe(art);
+			$('#launch-hit').addEventListener('click', () => {
+				clearTimeout(timer);
+				launch();
+			});
+		}
+	}
+</script>
