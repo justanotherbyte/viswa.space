@@ -33,22 +33,29 @@ const plumes = [
 	id="aboutme"
 	class="grid md:grid-cols-2 sm:grid-cols-1 bg-zinc-100 dark:bg-zinc-800 rounded-none border border-zinc-300 dark:border-zinc-700"
 >
-	<figure class="relative aspect-[4/3] md:aspect-auto border-b md:border-b-0 md:border-r border-zinc-300 dark:border-zinc-700">
-		<Image
-			src={nasaImage}
-			alt="The Space Shuttle replica Independence mounted on NASA's 747 carrier aircraft"
-			widths={[480, 800, 1200]}
-			sizes="(min-width: 768px) 50vw, 100vw"
-			loading="eager"
-			class="absolute inset-0 w-full h-full object-cover object-[50%_45%]"
-		/>
+	<figure class="photo relative aspect-[4/3] md:aspect-auto border-b md:border-b-0 md:border-r border-zinc-300 dark:border-zinc-700">
+		<!-- the photo is notched at its bottom-left; the outline traces the notch and the link sits in it -->
+		<div class="photo-cut absolute inset-0">
+			<Image
+				src={nasaImage}
+				alt="The Space Shuttle replica Independence mounted on NASA's 747 carrier aircraft"
+				widths={[480, 800, 1200]}
+				sizes="(min-width: 768px) 50vw, 100vw"
+				loading="eager"
+				class="absolute inset-0 w-full h-full object-cover object-[50%_45%]"
+			/>
+		</div>
+		<!-- link first so the notch layers can react to it (peer), lifted above them with z-10; it starts below the chamfer so its box never covers the photo -->
 		<a
 			href="/photography"
-			class="absolute left-4 bottom-4 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-sm border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white active:opacity-75 focus-visible:outline-2 focus-visible:outline-blue-500 duration-200"
+			class="peer group absolute z-10 left-0 bottom-0 w-9 pr-1 h-[calc(var(--notch-h)-2.25rem)] flex flex-col items-center justify-end gap-2 pb-3 text-[15px] uppercase tracking-[0.06em] text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white active:opacity-75 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-500 duration-200"
 		>
-			My Photography
-			<Icon name="next" class="w-4 h-4 text-blue-500" />
+			<Icon name="arrow" class="w-4 h-4 -rotate-90 text-blue-500 group-hover:-translate-y-0.5 duration-200" />
+			<span class="[writing-mode:vertical-rl] rotate-180">Photography</span>
 		</a>
+		<!-- 1px past the figure on the left, and on desktop 2px past the bottom (the card can sit on a half pixel): a border-coloured notch that turns blue with the link, then the page background inset 1px over it -->
+		<div aria-hidden="true" class="photo-notch absolute top-0 right-0 -left-px bottom-[calc(-1*var(--over))] bg-zinc-300 dark:bg-zinc-700 peer-hover:bg-blue-500 peer-focus-visible:bg-blue-500 duration-200"></div>
+		<div aria-hidden="true" class="photo-notch photo-notch-fill absolute top-0 right-0 -left-px bottom-[calc(-1*var(--over))] bg-white dark:bg-zinc-900"></div>
 	</figure>
 
 	<div class="relative overflow-hidden p-8">
@@ -149,6 +156,43 @@ const plumes = [
 </section>
 
 <style>
+	/* notch width, height (capped at 92% of the photo) and how far its layers reach past the photo's bottom.
+	   On mobile the photo sits on the text panel, so the layers stop at the photo; on desktop they cover the card border. */
+	.photo {
+		--w: 2.25rem;
+		--notch-h: min(11.5rem, 92%);
+		--over: 0px;
+	}
+
+	@media (min-width: 48rem) {
+		.photo {
+			--over: 2px;
+		}
+	}
+
+	.photo-cut {
+		--top: calc(100% - var(--notch-h));
+	}
+
+	.photo-notch {
+		--top: calc(100% - var(--notch-h) - var(--over));
+	}
+
+	/* 45° chamfer, so the 1px line below is a fixed offset of it */
+	.photo-cut {
+		clip-path: polygon(0 0, 100% 0, 100% 100%, var(--w) 100%, var(--w) calc(var(--top) + var(--w)), 0 var(--top));
+	}
+
+	/* .photo-notch sits 1px left of the figure, so its x is the figure's x + 1px */
+	.photo-notch {
+		clip-path: polygon(0 calc(var(--top) - 1px), calc(var(--w) + 1px) calc(var(--top) + var(--w)), calc(var(--w) + 1px) calc(100% - var(--over) / 2), 0 calc(100% - var(--over) / 2));
+	}
+
+	/* inset 1px from the photo's edge: across on the vertical, sqrt(2) px down on the 45° diagonal */
+	.photo-notch-fill {
+		clip-path: polygon(0 calc(var(--top) + 0.414px), var(--w) calc(var(--top) + var(--w) + 0.414px), var(--w) 100%, 0 100%);
+	}
+
 	.dots {
 		background-image: radial-gradient(currentColor 0.8px, transparent 1.2px);
 		background-size: 16px 16px;
