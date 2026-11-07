@@ -1,6 +1,8 @@
 ---
 import { Image } from 'astro:assets';
 import nasaImage from '../assets/nasa.jpg';
+import rocketImage from '../assets/rocket.jpg';
+import rocketNightImage from '../assets/rocket-night.jpg';
 import Icon from './Icon.astro';
 import { MY_EMAIL } from '../consts';
 
@@ -12,6 +14,13 @@ const links = [
 	{ label: 'LinkedIn', href: 'https://www.linkedin.com/in/mviswa/', icon: 'linkedin' },
 	{ label: 'Twitter', href: 'https://x.com/justanotherbyte', icon: 'x' },
 ] as const;
+
+// hero photos, crossfaded in this order; pos is each photo's object-position in the landscape crop
+const photos = [
+	{ src: nasaImage, alt: "The Space Shuttle replica Independence mounted on NASA's 747 carrier aircraft", pos: 'object-[50%_45%]' },
+	{ src: rocketImage, alt: 'A rocket on its launch rail against a blue sky', pos: 'object-[50%_10%]' },
+	{ src: rocketNightImage, alt: 'A rocket lying on its launch rail at night on desert sand', pos: 'object-[50%_70%]' },
+];
 ---
 
 <section
@@ -21,14 +30,19 @@ const links = [
 	<figure class="photo relative aspect-[4/3] md:aspect-auto border-b md:border-b-0 md:border-r border-zinc-300 dark:border-zinc-700">
 		<!-- the photo is notched at its bottom-left and the link sits in the notch; z-[1] lifts it over its border layer -->
 		<div class="photo-cut absolute inset-0 z-[1]">
-			<Image
-				src={nasaImage}
-				alt="The Space Shuttle replica Independence mounted on NASA's 747 carrier aircraft"
-				widths={[480, 800, 1200]}
-				sizes="(min-width: 768px) 50vw, 100vw"
-				loading="eager"
-				class="absolute inset-0 w-full h-full object-cover object-[50%_45%]"
-			/>
+			{
+				photos.map(({ src, alt, pos }, i) => (
+					<Image
+						src={src}
+						alt={alt}
+						widths={[480, 800, 1200]}
+						sizes="(min-width: 768px) 50vw, 100vw"
+						loading={i ? 'lazy' : 'eager'}
+						class={`absolute inset-0 w-full h-full object-cover ${pos} transition-opacity duration-1000 ${i ? 'opacity-0' : ''}`}
+						data-slide
+					/>
+				))
+			}
 		</div>
 		<!-- link first so the border layer can react to it (peer), lifted above them with z-10; it ends left of the chamfer so its box never covers the photo -->
 		<a
@@ -117,3 +131,16 @@ const links = [
 		clip-path: polygon(0 calc(100% - var(--over) - var(--h) + 1px), calc(var(--notch-w) - var(--h) + 0.586px) calc(100% - var(--over) - var(--h) + 1px), calc(var(--notch-w) + var(--over) - 0.414px) 100%, 0 100%);
 	}
 </style>
+
+<script>
+	// crossfade to the next hero photo every 6s; reduced motion keeps the first
+	const slides = document.querySelectorAll('[data-slide]');
+	if (slides.length > 1 && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+		let i = 0;
+		setInterval(() => {
+			slides[i].classList.add('opacity-0');
+			i = (i + 1) % slides.length;
+			slides[i].classList.remove('opacity-0');
+		}, 6000);
+	}
+</script>
