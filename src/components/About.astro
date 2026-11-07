@@ -15,7 +15,7 @@ const links = [
 	{ label: 'Twitter', href: 'https://x.com/justanotherbyte', icon: 'x' },
 ] as const;
 
-// what the hero's "I work with" line cycles through; the .words keyframes assume four
+// what the hero's "I work on" line cycles through; the .words keyframes assume four
 const work = ['rocket avionics', 'FPGAs', 'dev tools', 'distributed systems'];
 
 // hero photos, crossfaded in this order; pos is each photo's object-position in the landscape crop
@@ -64,13 +64,14 @@ const photos = [
 
 	<div class="flex flex-col justify-center p-6 md:p-10 md:min-h-[22rem]">
 		<div>
-			<h1 class="text-2xl xl:text-3xl leading-tight dark:text-white">
+			<!-- the name in full-strength text, "I work on" muted, and only the word that changes in the accent (a darker blue on light, a lighter one on dark, both ≥4.5:1 on the panel) -->
+			<h1 class="text-2xl xl:text-3xl leading-tight text-zinc-900 dark:text-white">
 				Hey, I'm Viswa.
-				<span class="block mt-1 text-blue-500">
-					I work with{' '}
+				<span class="block mt-1 text-zinc-500 dark:text-zinc-400">
+					I work on{' '}
 					<span class="sr-only">{work.join(', ')}</span>
 					<!-- one line tall (leading-tight is 1.25), showing one word at a time; the first word repeats at the end so the loop has no jump -->
-					<span aria-hidden="true" class="inline-block h-[1.25em] overflow-hidden align-top">
+					<span aria-hidden="true" class="inline-block h-[1.25em] overflow-hidden align-top text-blue-600 dark:text-blue-400">
 						<span class="words block">
 							{[...work, work[0]].map((w) => <span class="block">{w}</span>)}
 						</span>
