@@ -38,8 +38,9 @@ const links = [
 			<span>Photography</span>
 			<Icon name="arrow" class="w-4 h-4 text-blue-500 group-hover:translate-x-0.5 duration-200" />
 		</a>
-		<!-- the photo's 1px border, drawn under it over the card borders, turning blue with the link -->
-		<div aria-hidden="true" class="photo-frame absolute -inset-px bg-zinc-300 dark:bg-zinc-700 peer-hover:bg-blue-500 peer-focus-visible:bg-blue-500 duration-200"></div>
+		<!-- the photo's 1px border, drawn under it over the card borders; only its notch edges turn blue with the link -->
+		<div aria-hidden="true" class="photo-frame absolute -inset-px bg-zinc-300 dark:bg-zinc-700"></div>
+		<div aria-hidden="true" class="photo-edge absolute -inset-px peer-hover:bg-blue-500 peer-focus-visible:bg-blue-500 duration-200"></div>
 		<!-- the rest of the notch in the page background: 1px past the figure on the left, and on desktop 2px past the bottom (the card can sit on a half pixel) -->
 		<div aria-hidden="true" class="photo-notch-fill absolute top-0 right-0 -left-px bottom-[calc(-1*var(--over))] bg-white dark:bg-zinc-900"></div>
 	</figure>
@@ -102,6 +103,12 @@ const links = [
 	   so its ends sit 0.414px left of the photo's: 1px - 0.414px = 0.586px right in this box */
 	.photo-frame {
 		clip-path: polygon(0 0, 100% 0, 100% 100%, calc(var(--notch-w) + 0.586px) 100%, calc(var(--notch-w) - var(--h) + 0.586px) calc(100% - var(--h)), 0 calc(100% - var(--h)));
+	}
+
+	/* the strip of that border above and right of the link: from the photo's edge out to the frame's, and 1px past the
+	   photo's bottom so the chamfer meets the border below */
+	.photo-edge {
+		clip-path: polygon(0 calc(100% - var(--h) - 1px), calc(var(--notch-w) - var(--h) + 1px) calc(100% - var(--h) - 1px), calc(var(--notch-w) + 2px) 100%, calc(var(--notch-w) + 0.586px) 100%, calc(var(--notch-w) - var(--h) + 0.586px) calc(100% - var(--h)), 0 calc(100% - var(--h)));
 	}
 
 	/* the notch below and left of that border, in a box 1px left of the figure and --over past its bottom */
