@@ -3,15 +3,7 @@ import { Image } from 'astro:assets';
 import nasaImage from '../assets/nasa.jpg';
 import Icon from './Icon.astro';
 import { MY_EMAIL } from '../consts';
-import { R, CX, CY, meridians, parallels, equator } from '../lib/globe';
 
-const tags = [
-	{ label: 'Developer Tooling', icon: 'terminal' },
-	{ label: 'FPGA / Digital Design', icon: 'chip' },
-	{ label: 'Rocketry', icon: 'rocket' },
-	{ label: 'Robotics', icon: 'arm' },
-	{ label: 'Quantum Computing', icon: 'atom' },
-] as const;
 
 const links = [
 	{ label: 'Email', href: `mailto:${MY_EMAIL}`, icon: 'mail' },
@@ -20,13 +12,6 @@ const links = [
 	{ label: 'LinkedIn', href: 'https://www.linkedin.com/in/mviswa/', icon: 'linkedin' },
 	{ label: 'Twitter', href: 'https://x.com/justanotherbyte', icon: 'x' },
 ] as const;
-
-// main engine nozzle exits in the orbiter's frame: x of the bell's mouth, its centreline, half its height
-const plumes = [
-	{ x: 316, y: -15.5, h: 6 },
-	{ x: 318, y: 0, h: 8 },
-	{ x: 316, y: 15.5, h: 6 },
-];
 ---
 
 <section
@@ -58,60 +43,8 @@ const plumes = [
 		<div aria-hidden="true" class="photo-notch photo-notch-fill absolute top-0 right-0 -left-px bottom-[calc(-1*var(--over))] bg-white dark:bg-zinc-900"></div>
 	</figure>
 
-	<div class="relative overflow-hidden p-8">
-		<div aria-hidden="true" class="art pointer-events-none absolute inset-0 text-zinc-400 dark:text-zinc-500">
-			<div class="dots absolute inset-0"></div>
-
-			<svg id="about-globe" class="absolute top-0 right-0 w-[360px] h-[560px] max-xl:translate-x-12 max-xl:-translate-y-12" viewBox="0 0 360 560" fill="none" stroke="currentColor">
-				<g stroke-width="0.75" opacity="0.45">
-					{meridians().map((d, i) => <path class="draw" style={`animation-delay: ${i * 70}ms`} d={d} pathLength="1" data-meridian />)}
-					{parallels.map((d, i) => <path class="draw" style={`animation-delay: ${200 + i * 70}ms`} d={d} pathLength="1" />)}
-				</g>
-				<path class="fade" style="animation-delay: 600ms" d={equator} pathLength="504" stroke-width="0.75" stroke-dasharray="3 3" opacity="0.7" data-equator />
-				<circle class="draw" cx={CX} cy={CY} r={R} pathLength="1" stroke-width="1" opacity="0.7" />
-
-				<ellipse class="draw" style="animation-delay: 500ms" cx={CX} cy={CY} rx="250" ry="62" transform={`rotate(32 ${CX} ${CY})`} pathLength="1" stroke-width="0.75" opacity="0.6" />
-			</svg>
-
-			<svg class="hidden xl:block absolute top-0 right-0 w-[360px] h-[560px]" viewBox="0 0 360 560" fill="none" stroke="currentColor">
-				<!-- ascent trajectory, carried on past the nose towards orbit -->
-				<path class="flow" d="M346 191 C352 178 357 166 368 148" stroke-width="0.75" stroke-dasharray="2 4" opacity="0.8" />
-
-				<!-- orbiter planform to scale (37.2 m long, 23.8 m span), nose up and to the right; drawn nose at the origin, tail along +x -->
-				<g transform="translate(342 199) rotate(115) scale(0.62)" stroke-width="1.3" stroke-linejoin="round">
-					<!-- double delta: 81° glove, 45° main wing, elevons at the trailing edge -->
-					<path class="draw" style="animation-delay: 800ms; animation-duration: 2.2s" d="M0 0 C2 -12 22 -20 55 -20 L95 -20 L206 -37 L265 -96 L285 -96 L293 -27 L300 -27 L300 27 L293 27 L285 96 L265 96 L206 37 L95 20 L55 20 C22 20 2 12 0 0 Z" pathLength="1" />
-					<!-- three main engine bells; the upper one hides the inner halves of the lower pair -->
-					<path class="draw" style="animation-delay: 1400ms" d="M300 -5 L318 -9 L318 9 L300 5 M300 -10 L316 -22 L316 -9 M300 10 L316 22 L316 9" pathLength="1" />
-					<g class="fade" style="animation-delay: 2000ms" stroke-width="0.9" opacity="0.8">
-						<path d="M10 -7 C6 -3 6 3 10 7 M28 -12 C35 -4 35 4 28 12 M38 -8 h6 v5 h-6 Z M38 3 h6 v5 h-6 Z" />
-						<path d="M70 -16 L228 -16 M70 16 L228 16 M70 -16 V16 M70 0 L228 0 M110 -16 V16 M150 -16 V16 M190 -16 V16" />
-						<path d="M95 -20 L228 -20 M95 20 L228 20 M228 -20 C236 -27 246 -27 256 -27 L300 -27 M228 20 C236 27 246 27 256 27 L300 27" />
-						<path d="M232 0 L244 -2.5 L302 -2.5 M232 0 L244 2.5 L302 2.5" />
-						<path d="M275 -92 L284 -27 M275 92 L284 27 M279 -61 L289 -61 M279 61 L289 61" />
-						<path d="M300 -25 L307 -27 L307 -21 L300 -23 M300 25 L307 27 L307 21 L300 23" />
-					</g>
-
-					<!-- engine plumes: outer flame, hot core and shock diamonds, lit once the orbiter is drawn -->
-					<g class="ignite text-blue-500" stroke-width="1.1">
-						{
-							plumes.map(({ x, y, h }, i) => (
-								<g class="plume" style={`animation-duration: ${0.42 + i * 0.13}s`}>
-									<path d={`M${x} ${y - h} C${x + 16} ${y - h} ${x + 30} ${y - 3} ${x + 46} ${y} C${x + 30} ${y + 3} ${x + 16} ${y + h} ${x} ${y + h}`} opacity="0.7" />
-									<path d={`M${x} ${y - h / 2} C${x + 10} ${y - h / 2} ${x + 16} ${y - 1} ${x + 24} ${y} C${x + 16} ${y + 1} ${x + 10} ${y + h / 2} ${x} ${y + h / 2}`} />
-									{[9, 21].map((d) => (
-										<path class="diamond" d={`M${x + d} ${y} l3 -2.5 l3 2.5 l-3 2.5 Z`} fill="currentColor" stroke="none" />
-									))}
-								</g>
-							))
-						}
-					</g>
-				</g>
-
-			</svg>
-		</div>
-
-		<div class="relative">
+	<div class="flex flex-col justify-center p-6 md:p-10 md:min-h-[22rem]">
+		<div>
 			<h1 class="text-2xl xl:text-3xl leading-tight dark:text-white">
 				Hey, I'm Viswa.
 				<span class="block mt-1 text-blue-500">Engineer, builder, and occasional rocket enthusiast.</span>
@@ -125,17 +58,6 @@ const plumes = [
 				>Imperial College London</a>. I build software and hardware, from developer tools and
 				distributed systems to rocket avionics and FPGAs.
 			</p>
-
-			<ul class="mt-6 max-w-[28rem] flex flex-wrap gap-2" aria-label="Interests">
-				{
-					tags.map(({ label, icon }) => (
-						<li class="inline-flex items-center gap-2 px-2.5 py-1 text-xs border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400">
-							<Icon name={icon} class="w-3.5 h-3.5 text-blue-500" />
-							{label}
-						</li>
-					))
-				}
-			</ul>
 
 			<hr class="mt-7 mb-4 h-0.5 border-t-0 bg-zinc-300 dark:bg-white/10" />
 
@@ -192,114 +114,4 @@ const plumes = [
 	.photo-notch-fill {
 		clip-path: polygon(0 calc(var(--top) + 0.414px), var(--w) calc(var(--top) + var(--w) + 0.414px), var(--w) 100%, 0 100%);
 	}
-
-	.dots {
-		background-image: radial-gradient(currentColor 0.8px, transparent 1.2px);
-		background-size: 16px 16px;
-		opacity: 0.35;
-		mask-image: radial-gradient(ellipse 70% 90% at 100% 40%, #000, transparent 75%);
-	}
-
-	/* the line art plots itself in on load; dashoffset defaults to 0 so it shows if animation never runs */
-	.draw {
-		stroke-dasharray: 1;
-		animation: draw 1.6s cubic-bezier(0.23, 1, 0.32, 1) backwards;
-	}
-
-	@keyframes draw {
-		from {
-			stroke-dashoffset: 1;
-		}
-	}
-
-	.fade {
-		animation: fade 0.8s ease-out backwards;
-	}
-
-	@keyframes fade {
-		from {
-			opacity: 0;
-		}
-	}
-
-	/* ascent trajectory streams out past the nose */
-	.flow {
-		animation: flow 1.5s linear infinite;
-	}
-
-	@keyframes flow {
-		to {
-			stroke-dashoffset: -6;
-		}
-	}
-
-	/* engines light after the orbiter is drawn, then the plumes flicker from the nozzle mouth */
-	.ignite {
-		animation: fade 0.6s ease-out 2.2s backwards;
-	}
-
-	.plume {
-		transform-box: fill-box;
-		transform-origin: left center;
-		animation: flicker 0.42s linear infinite;
-	}
-
-	@keyframes flicker {
-		25% {
-			transform: scale(0.86, 0.94);
-		}
-		50% {
-			transform: scale(1.06, 1);
-		}
-		75% {
-			transform: scale(0.92, 0.97);
-		}
-	}
-
-	.diamond {
-		animation: shimmer 0.3s ease-in-out infinite alternate;
-	}
-
-	@keyframes shimmer {
-		to {
-			opacity: 0.4;
-		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.draw,
-		.fade,
-		.flow,
-		.ignite,
-		.plume,
-		.diamond {
-			animation: none;
-		}
-	}
 </style>
-
-<script>
-	import { meridians } from '../lib/globe';
-
-	// turn the globe west to east, 4° a second, only while it is on screen
-	const svg = document.getElementById('about-globe');
-	if (svg && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-		const lines = svg.querySelectorAll<SVGPathElement>('[data-meridian]');
-		const equator = svg.querySelector<SVGPathElement>('[data-equator]')!;
-		let frame = 0, last = -Infinity;
-		const spin = (now: number) => {
-			frame = requestAnimationFrame(spin);
-			// 30 updates a second is enough: at 4°/s the surface moves at most 0.26 px per update
-			if (now - last < 32) return;
-			last = now;
-			const deg = ((now / 1000) * 4) % 30;
-			meridians(deg).forEach((d, i) => lines[i].setAttribute('d', d));
-			// 504 / 360 keeps the dashes in step with the surface, and 30° moves exactly 7 dash periods
-			equator.style.strokeDashoffset = `${-deg * 1.4}`;
-		};
-		new IntersectionObserver(([entry]) => {
-			cancelAnimationFrame(frame);
-			if (entry.isIntersecting) frame = requestAnimationFrame(spin);
-		}).observe(svg);
-	}
-</script>
