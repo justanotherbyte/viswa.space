@@ -19,8 +19,8 @@ const links = [
 	class="grid md:grid-cols-2 sm:grid-cols-1 bg-zinc-100 dark:bg-zinc-800 rounded-none border border-zinc-300 dark:border-zinc-700"
 >
 	<figure class="photo relative aspect-[4/3] md:aspect-auto border-b md:border-b-0 md:border-r border-zinc-300 dark:border-zinc-700">
-		<!-- the photo is notched at its bottom-left; the outline traces the notch and the link sits in it -->
-		<div class="photo-cut absolute inset-0">
+		<!-- the photo is notched at its bottom-left and the link sits in the notch; z-[1] lifts it over its border layer -->
+		<div class="photo-cut absolute inset-0 z-[1]">
 			<Image
 				src={nasaImage}
 				alt="The Space Shuttle replica Independence mounted on NASA's 747 carrier aircraft"
@@ -30,7 +30,7 @@ const links = [
 				class="absolute inset-0 w-full h-full object-cover object-[50%_45%]"
 			/>
 		</div>
-		<!-- link first so the notch layers can react to it (peer), lifted above them with z-10; it ends left of the chamfer so its box never covers the photo -->
+		<!-- link first so the border layer can react to it (peer), lifted above them with z-10; it ends left of the chamfer so its box never covers the photo -->
 		<a
 			href="/photography"
 			class="peer group absolute z-10 left-0 bottom-0 h-9 pt-1 w-[calc(var(--notch-w)-2.25rem)] flex items-center gap-2 pl-3 text-[15px] uppercase tracking-[0.06em] text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white active:opacity-75 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-500 duration-200"
@@ -38,9 +38,10 @@ const links = [
 			<span>Photography</span>
 			<Icon name="arrow" class="w-4 h-4 text-blue-500 group-hover:translate-x-0.5 duration-200" />
 		</a>
-		<!-- 1px past the figure on the left and 2px past the bottom (the card can sit on a half pixel): a border-coloured notch that turns blue with the link, then the page background inset 1px over it, so the left and bottom borders under the link light up too -->
-		<div aria-hidden="true" class="photo-notch absolute top-0 right-0 -left-px bottom-[calc(-1*var(--over))] bg-zinc-300 dark:bg-zinc-700 peer-hover:bg-blue-500 peer-focus-visible:bg-blue-500 duration-200"></div>
-		<div aria-hidden="true" class="photo-notch photo-notch-fill absolute top-0 right-0 -left-px bottom-[calc(-1*var(--over))] bg-white dark:bg-zinc-900"></div>
+		<!-- the photo's 1px border, drawn under it over the card borders, turning blue with the link -->
+		<div aria-hidden="true" class="photo-frame absolute -inset-px bg-zinc-300 dark:bg-zinc-700 peer-hover:bg-blue-500 peer-focus-visible:bg-blue-500 duration-200"></div>
+		<!-- the rest of the notch in the page background: 1px past the figure on the left, and on desktop 2px past the bottom (the card can sit on a half pixel) -->
+		<div aria-hidden="true" class="photo-notch-fill absolute top-0 right-0 -left-px bottom-[calc(-1*var(--over))] bg-white dark:bg-zinc-900"></div>
 	</figure>
 
 	<div class="flex flex-col justify-center p-6 md:p-10 md:min-h-[22rem]">
@@ -78,39 +79,33 @@ const links = [
 </section>
 
 <style>
-	/* notch height, width and how far its layers reach past the photo's bottom, over the border below it
-	   (the figure's bottom border on mobile, the card's on desktop) */
+	/* notch height, width and how far the notch fill reaches past the photo's bottom.
+	   On mobile the photo sits on the text panel, so the fill stops at the photo; on desktop it covers the card border. */
 	.photo {
 		--h: 2.25rem;
 		--notch-w: 11.5rem;
-		--over: 2px;
+		--over: 0px;
 	}
 
-	/* --top is the notch's upper edge, --right where the chamfer meets the photo's bottom */
+	@media (min-width: 48rem) {
+		.photo {
+			--over: 2px;
+		}
+	}
+
+	/* 45° chamfer, so the 1px border below is a fixed offset of it */
 	.photo-cut {
-		--top: calc(100% - var(--h));
-		--right: var(--notch-w);
+		clip-path: polygon(0 0, 100% 0, 100% 100%, var(--notch-w) 100%, calc(var(--notch-w) - var(--h)) calc(100% - var(--h)), 0 calc(100% - var(--h)));
 	}
 
-	/* .photo-notch sits 1px left of the figure, so its x is the figure's x + 1px */
-	.photo-notch {
-		--top: calc(100% - var(--h) - var(--over));
-		--right: calc(var(--notch-w) + 1px);
+	/* the photo's shape grown 1px, in a box 1px bigger on every side. Growing the 45° edge 1px moves it sqrt(2) px left,
+	   so its ends sit 0.414px left of the photo's: 1px - 0.414px = 0.586px right in this box */
+	.photo-frame {
+		clip-path: polygon(0 0, 100% 0, 100% 100%, calc(var(--notch-w) + 0.586px) 100%, calc(var(--notch-w) - var(--h) + 0.586px) calc(100% - var(--h)), 0 calc(100% - var(--h)));
 	}
 
-	/* 45° chamfer, so the 1px line below is a fixed offset of it */
-	.photo-cut {
-		clip-path: polygon(0 0, 100% 0, 100% 100%, var(--right) 100%, calc(var(--right) - var(--h)) var(--top), 0 var(--top));
-	}
-
-	/* follows the chamfer down to 1px past the photo's bottom, over the border below it */
-	.photo-notch {
-		clip-path: polygon(0 var(--top), calc(var(--right) - var(--h)) var(--top), calc(var(--right) + var(--over) / 2) calc(100% - var(--over) / 2), 0 calc(100% - var(--over) / 2));
-	}
-
-	/* inset 1px on every side, so the outline frames the link: down on the horizontal, sqrt(2) px left on the 45° diagonal,
-	   in from the card's left border, and stopping at the photo's bottom */
+	/* the notch below and left of that border, in a box 1px left of the figure and --over past its bottom */
 	.photo-notch-fill {
-		clip-path: polygon(1px calc(var(--top) + 1px), calc(var(--right) - var(--h) + 0.586px) calc(var(--top) + 1px), calc(var(--right) - 0.414px) calc(100% - var(--over)), 1px calc(100% - var(--over)));
+		clip-path: polygon(0 calc(100% - var(--over) - var(--h) + 1px), calc(var(--notch-w) - var(--h) + 0.586px) calc(100% - var(--over) - var(--h) + 1px), calc(var(--notch-w) + var(--over) - 0.414px) 100%, 0 100%);
 	}
 </style>
