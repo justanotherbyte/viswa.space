@@ -15,6 +15,9 @@ const links = [
 	{ label: 'Twitter', href: 'https://x.com/justanotherbyte', icon: 'x' },
 ] as const;
 
+// what the hero's "I work with" line cycles through; the .words keyframes assume four
+const work = ['rocket avionics', 'FPGAs', 'dev tools', 'distributed systems'];
+
 // hero photos, crossfaded in this order; pos is each photo's object-position in the landscape crop
 const photos = [
 	{ src: nasaImage, alt: "The Space Shuttle replica Independence mounted on NASA's 747 carrier aircraft", pos: 'object-[50%_45%]' },
@@ -63,7 +66,16 @@ const photos = [
 		<div>
 			<h1 class="text-2xl xl:text-3xl leading-tight dark:text-white">
 				Hey, I'm Viswa.
-				<span class="block mt-1 text-blue-500">Engineer, builder, and occasional rocket enthusiast.</span>
+				<span class="block mt-1 text-blue-500">
+					I work with{' '}
+					<span class="sr-only">{work.join(', ')}</span>
+					<!-- one line tall (leading-tight is 1.25), showing one word at a time; the first word repeats at the end so the loop has no jump -->
+					<span aria-hidden="true" class="inline-block h-[1.25em] overflow-hidden align-top">
+						<span class="words block">
+							{[...work, work[0]].map((w) => <span class="block">{w}</span>)}
+						</span>
+					</span>
+				</span>
 			</h1>
 
 			<p class="mt-6 max-w-[27rem] dark:text-zinc-200">
@@ -129,6 +141,25 @@ const photos = [
 	/* the notch below and left of that border, in a box 1px left of the figure and --over past its bottom */
 	.photo-notch-fill {
 		clip-path: polygon(0 calc(100% - var(--over) - var(--h) + 1px), calc(var(--notch-w) - var(--h) + 0.586px) calc(100% - var(--over) - var(--h) + 1px), calc(var(--notch-w) + var(--over) - 0.414px) 100%, 0 100%);
+	}
+
+	/* each step slides one word up (20% of the five-line list), holding each for 2s */
+	.words {
+		animation: words 10s infinite;
+	}
+
+	@keyframes words {
+		0%, 20% { transform: translateY(0); }
+		25%, 45% { transform: translateY(-20%); }
+		50%, 70% { transform: translateY(-40%); }
+		75%, 95% { transform: translateY(-60%); }
+		100% { transform: translateY(-80%); }
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.words {
+			animation: none;
+		}
 	}
 </style>
 
