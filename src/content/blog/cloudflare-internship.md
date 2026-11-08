@@ -125,4 +125,4 @@ I enjoy Python (and Rust) and think Cloudflare Python Workers have MASSIVE poten
 
 # What's next for me?
 
-Taking a year out from university is what's next for me (due to some personal reasons). I'll be focusing on family, but also looking for some work and continuing to work on some cool stuff like Crosswind in the meantime. I'll also be continuing to explore FPGA technology, participating in the rocketry team and continuing to explore agents!
+I'll be looking for some work and continuing to work on some cool stuff like Crosswind. I'll also be continuing to explore FPGA technology, participating in the rocketry team and continuing to explore agents!
