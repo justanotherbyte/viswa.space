@@ -60,6 +60,7 @@ const breaksAfter = photos.map((_, i) =>
 							style={`flex: ${p.ratio * 100} 1 0; aspect-ratio: ${p.image.width} / ${p.image.height}`}
 							data-src={p.full.src}
 							data-srcset={p.full.srcSet.attribute}
+							data-ratio={p.ratio}
 							data-alt={p.alt}
 							data-date={p.date}
 							data-exposure={p.exposure.join('|')}
@@ -99,7 +100,7 @@ const breaksAfter = photos.map((_, i) =>
 				</button>
 			</div>
 			<div id="viewer-stage" class="relative flex min-h-0 flex-1 items-center justify-center px-4 md:px-16">
-				<img id="viewer-img" alt="" sizes="100vw" class="max-h-full max-w-full rounded-md object-contain" />
+				<img id="viewer-img" alt="" sizes="100vw" class="viewer-img rounded-md object-cover" />
 				<button id="viewer-prev" type="button" aria-label="Previous photo" class="absolute left-2 top-1/2 -translate-y-1/2 p-3 cursor-pointer focus-visible:outline-2 focus-visible:outline-blue-500 bg-zinc-950/50 text-zinc-400 hover:text-white duration-200">
 					<Icon name="prev" class="w-5 h-5" />
 				</button>
@@ -129,6 +130,16 @@ const breaksAfter = photos.map((_, i) =>
 		.viewer[open] {
 			opacity: 0;
 		}
+	}
+
+	/* size from the photo's ratio, not the loaded file, so the thumbnail-to-large swap doesn't resize it */
+	#viewer-stage {
+		container-type: size;
+	}
+
+	.viewer-img {
+		width: min(100cqw, 100cqh * var(--ratio));
+		aspect-ratio: var(--ratio);
 	}
 
 	.viewer img {
@@ -177,6 +188,7 @@ const breaksAfter = photos.map((_, i) =>
 	const show = (i: number) => {
 		current = (i + photos.length) % photos.length;
 		const photo = photos[current];
+		img.style.setProperty('--ratio', photo.dataset.ratio!);
 		img.srcset = '';
 		img.src = photo.querySelector('img')!.currentSrc;
 		img.alt = photo.dataset.alt!;
