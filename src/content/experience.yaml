@@ -10,13 +10,13 @@
 
 - id: karman-space-avionics-engineer
   order: 2
-  position: Avionics Software Engineer
+  position: Avionics Systems Engineer
   companyName: Karman Space Programme
   companyLink: https://karmanspace.co.uk
   companyIcon: https://static.wixstatic.com/media/a7e3f9_ade130a7eb9348f8a185035134164f5f~mv2.png/v1/fill/w_192%2Ch_192%2Clg_1%2Cusm_0.66_1.00_0.01/a7e3f9_ade130a7eb9348f8a185035134164f5f~mv2.png
   startedAt: "Feb 2026"
   endedAt: "Present"
-  description: "Working on KSP's Vega rocket towards a launch in Las Vegas in 2026 \U0001F680"
+  description: Worked on flight and ground software for the VEGA liquid rocket. Part of the first launch campaign at FAR in 2026.
 
 - id: autumn-swe-intern
   order: 3
