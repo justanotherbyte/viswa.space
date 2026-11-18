@@ -7,11 +7,13 @@ interface Props {
 	description: string;
 	image: ImageMetadata | string;
 	imagePosition?: 'top' | 'center' | 'bottom';
+	imageFit?: 'cover' | 'contain';
+	imageBg?: string;
 	readingTime: string;
 	slug: string;
 }
 
-const { title, description, image, imagePosition = 'center', readingTime, slug } = Astro.props;
+const { title, description, image, imagePosition = 'center', imageFit = 'cover', imageBg = 'transparent', readingTime, slug } = Astro.props;
 
 // Written out explicitly (not `object-${imagePosition}`) so Tailwind's static
 // scanner can see the literal class names and actually generate them.
@@ -20,7 +22,8 @@ const positionClass = {
 	center: 'object-center',
 	bottom: 'object-bottom',
 }[imagePosition];
-const imgClass = `w-full h-40 object-cover ${positionClass} border-b border-zinc-700`;
+const fitClass = { cover: 'object-cover', contain: 'object-contain p-6' }[imageFit];
+const imgClass = `w-full h-40 ${fitClass} ${positionClass} border-b border-zinc-700`;
 ---
 
 <a
@@ -29,7 +32,7 @@ const imgClass = `w-full h-40 object-cover ${positionClass} border-b border-zinc
 >
 	{
 		typeof image === 'string' ? (
-			<img src={image} alt={title} class={imgClass} />
+			<img src={image} alt={title} class={imgClass} style={{ background: imageBg }} />
 		) : (
 			<Image
 				src={image}
@@ -37,7 +40,7 @@ const imgClass = `w-full h-40 object-cover ${positionClass} border-b border-zinc
 				widths={[400, 800, 1200]}
 				sizes="(max-width: 767px) 100vw, 604px"
 				quality={90}
-				class={imgClass}
+				class={imgClass} style={{ background: imageBg }}
 			/>
 		)
 	}
