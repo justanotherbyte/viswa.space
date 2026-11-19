@@ -129,7 +129,7 @@ Like I said before, the address `A` here actually points to the lowest-significa
 <SideBySide reverse>
 <div>
 
-If you haven't noticed, we can effectively get the right "row" in `mem` by simply dividing `A` by 4, i.e `instruction = mem[A/2]`. Cool we have a rule to follow, but how does this translate to hardware?
+If you haven't noticed, we can effectively get the right "row" in `mem` by simply dividing `A` by 4, i.e `instruction = mem[A/4]`. Cool we have a rule to follow, but how does this translate to hardware?
 Simple! Remember that shifting right is effectively a division by 2! So we just shift `A` to the right by 2 bits.
 
 `A` shifted right gives us `A[31:2]`, but our `mem` size is just 64 words, so we'll keep only the bottom 6 bits ($2^6 = 64$), hence `A[7:2]`.
