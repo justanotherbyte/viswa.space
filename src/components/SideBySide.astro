@@ -1,0 +1,20 @@
+---
+// Two <Side> figures in columns from md up, stacked below that. A plain <div>
+// child holds prose instead, styled like the article's paragraphs.
+// Rows are shared (via subgrid in Side) so both code panels match in height
+// and both captions start on the same line, whatever their length.
+// `reverse` swaps the columns from md up; phones keep source order.
+interface Props {
+	reverse?: boolean;
+}
+const { reverse } = Astro.props;
+---
+
+<div
+	class:list={[
+		"not-prose grid gap-x-4 gap-y-6 md:grid-cols-2 md:grid-rows-[1fr_auto] md:gap-y-0 [&>div>p]:text-zinc-600 dark:[&>div>p]:text-zinc-300 [&>div>p+p]:mt-4",
+		reverse && "md:[&>*]:row-start-1 md:[&>:first-child]:col-start-2 md:[&>:last-child]:col-start-1",
+	]}
+>
+	<slot />
+</div>

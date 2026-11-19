@@ -1,0 +1,21 @@
+---
+// One column of <SideBySide>: a code block (or any content) with an optional caption.
+interface Props {
+	caption?: string;
+}
+
+const { caption } = Astro.props;
+---
+
+<figure
+	class="m-0 grid min-w-0 grid-rows-[1fr_auto] md:row-span-2 md:grid-rows-subgrid [&>pre]:m-0 [&>pre]:min-w-0 [&>pre]:overflow-x-auto [&>pre>code]:h-full"
+>
+	<slot />
+	{
+		caption && (
+			<figcaption class="mt-2 text-xs leading-relaxed text-pretty text-zinc-500 dark:text-zinc-400">
+				{caption}
+			</figcaption>
+		)
+	}
+</figure>

@@ -27,3 +27,51 @@ html {
 		padding: 5px;
 	}
 }
+/* Callouts (> [!NOTE] etc., see src/lib/remark-callouts.ts). No box or icon:
+   an indented passage with its label hanging in the indent like a margin note,
+   one step dimmer than body text so it reads as an aside, not a widget. */
+.callout {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	margin: 1.75rem 0;
+	color: var(--color-zinc-500);
+}
+
+.callout-label {
+	font-size: 0.75rem;
+	line-height: 1.5rem;
+	color: var(--color-blue-500);
+}
+
+.callout-body {
+	padding-left: 2ch;
+}
+
+.callout-body > * + * {
+	margin-top: 1rem;
+}
+
+@media (min-width: 48rem) {
+	.callout {
+		grid-template-columns: 10ch minmax(0, 1fr);
+	}
+
+	.callout-body {
+		padding-left: 0;
+	}
+
+	.callout-label {
+		padding-right: 2ch;
+		text-align: right;
+	}
+}
+
+@media (prefers-color-scheme: dark) {
+	.callout {
+		color: var(--color-zinc-400);
+	}
+
+	.callout-label {
+		color: var(--color-blue-400);
+	}
+}
