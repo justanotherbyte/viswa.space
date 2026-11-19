@@ -6,6 +6,7 @@ import FormattedDate from "../../components/FormattedDate.astro";
 import TableOfContents from "../../components/TableOfContents.astro";
 import { readingTime } from "../../lib/reading-time";
 import { tocHeadings } from "../../lib/toc";
+import { lastCommitDate } from "../../lib/last-commit";
 import { SITE_TITLE } from "../../consts";
 
 export async function getStaticPaths() {
@@ -23,6 +24,7 @@ const { title, description, date, image, imagePosition, imageFit, imageBg, inPro
 	project.data;
 const { Content, headings } = await render(project);
 const toc = tocHeadings(headings);
+const lastUpdated = inProgress ? await lastCommitDate(project.filePath) : undefined;
 
 // Written out explicitly (not `object-${imagePosition}`) so Tailwind's static
 // scanner can see the literal class names and actually generate them.
@@ -71,6 +73,7 @@ const heroClass = `w-full max-h-96 ${fitClass} ${positionClass} rounded-sm mb-4`
 				<p class="text-zinc-600 dark:text-zinc-400 text-xs mt-2">
 					⚠️ This article is in the works, and will soon be
 						completed.
+					{lastUpdated && <> Last updated <FormattedDate date={lastUpdated} />.</>}
 				</p>
 			)
 		}

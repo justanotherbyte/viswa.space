@@ -1,0 +1,258 @@
+---
+// A = 0x08 shifted right twice. Each shift moves every bit one place right, a 0
+// enters on the left and the lowest bit falls off: 8 -> 4 -> 2, i.e. mem[2].
+// Plays while on screen; reduced motion shows the final state.
+interface Props {
+	caption?: string;
+}
+const { caption } = Astro.props;
+
+// Two incoming zeros sit left of the 8-bit window, then A = 0000_1000.
+const bits = [0, 0, 0, 0, 0, 0, 1, 0, 0, 0];
+const steps = [
+	{ expr: 'A', value: '8', note: '' },
+	{ expr: 'A >> 1', value: '4', note: '÷ 2' },
+	{ expr: 'A >> 2', value: '2', note: '÷ 4, so mem[2]' },
+];
+---
+
+<figure class="shift not-prose m-0">
+	<div class="shift-stage">
+		<div class="shift-indices" aria-hidden="true">
+			{[7, 6, 5, 4, 3, 2, 1, 0].map((i) => <span>{i}</span>)}
+		</div>
+		<div class="shift-track" aria-hidden="true">
+			<div class="shift-window"></div>
+			<div class="shift-bits">
+				{bits.map((b) => <span class:list={["shift-bit", b && "is-one"]}>{b}</span>)}
+			</div>
+			<div class="shift-dropped"></div>
+		</div>
+		<div class="shift-dropped-label" aria-hidden="true">dropped</div>
+
+		<ol class="shift-steps">
+			{
+				steps.map((s) => (
+					<li>
+						<code>{s.expr}</code>
+						<span class="shift-eq">=</span>
+						<span class="shift-value">{s.value}</span>
+						<span class="shift-note">{s.note}</span>
+					</li>
+				))
+			}
+		</ol>
+	</div>
+	{
+		caption && (
+			<figcaption class="mt-2 text-xs leading-relaxed text-pretty text-zinc-500 dark:text-zinc-400">
+				{caption}
+			</figcaption>
+		)
+	}
+</figure>
+
+<script>
+	// Run the loop only while the figure is on screen.
+	const io = new IntersectionObserver((entries) => {
+		for (const e of entries) e.target.classList.toggle("is-playing", e.isIntersecting);
+	});
+	document.querySelectorAll(".shift").forEach((el) => io.observe(el));
+</script>
+
+<style>
+	.shift-stage {
+		container-type: inline-size;
+		/* Ten cells (8-bit window + 2 dropped) always fit the column. */
+		--cell: min(3.25rem, 9.6cqi);
+		--loop: 9s;
+		--ease: cubic-bezier(0.23, 1, 0.32, 1);
+		padding: 0.25rem 0;
+	}
+
+	.shift-indices,
+	.shift-track {
+		display: grid;
+		grid-template-columns: repeat(10, var(--cell));
+	}
+
+	.shift-indices {
+		margin-bottom: 0.375rem;
+		font-size: 0.75rem;
+		text-align: center;
+		color: var(--color-zinc-400);
+	}
+
+	.shift-track {
+		position: relative;
+		height: var(--cell);
+		/* Clip only the left edge, so incoming zeros stay hidden until they shift in. */
+		clip-path: inset(-1rem -100% -1rem 0);
+	}
+
+	.shift-window {
+		grid-column: 1 / span 8;
+		grid-row: 1;
+		border: 1px solid var(--color-zinc-300);
+		background: var(--color-zinc-100);
+	}
+
+	.shift-bits {
+		position: absolute;
+		inset: 0 auto 0 calc(var(--cell) * -2);
+		display: grid;
+		grid-template-columns: repeat(10, var(--cell));
+		align-items: center;
+		text-align: center;
+		color: var(--color-zinc-600);
+	}
+
+	.shift-bit.is-one {
+		color: var(--color-blue-600);
+		font-weight: 600;
+	}
+
+	/* Fades the bits that have fallen off the end. */
+	.shift-dropped {
+		grid-column: 9 / span 2;
+		grid-row: 1;
+		position: relative;
+		z-index: 1;
+		border: 1px dashed var(--color-zinc-300);
+		border-left: 0;
+		background: color-mix(in oklab, var(--color-white) 72%, transparent);
+	}
+
+	.shift-dropped-label {
+		margin: 0.375rem 0 0 calc(var(--cell) * 8);
+		width: calc(var(--cell) * 2);
+		font-size: 0.75rem;
+		text-align: center;
+		color: var(--color-zinc-400);
+	}
+
+	.shift-steps {
+		margin: 1.25rem 0 0;
+		padding: 0;
+		list-style: none;
+		display: grid;
+		grid-template-columns: repeat(3, max-content) minmax(0, 1fr);
+		gap: 0.25rem 1ch;
+		font-size: 0.875rem;
+	}
+
+	/* Rows share the list's columns, so the = signs and values line up. */
+	.shift-steps li {
+		display: grid;
+		grid-column: 1 / -1;
+		grid-template-columns: subgrid;
+		white-space: nowrap;
+		color: var(--color-zinc-600);
+	}
+
+	.shift-steps code {
+		background: none;
+		padding: 0;
+	}
+
+	.shift-value {
+		text-align: right;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.shift-note {
+		white-space: normal;
+		color: var(--color-blue-600);
+	}
+
+	@media (prefers-color-scheme: dark) {
+		.shift-window {
+			border-color: var(--color-zinc-700);
+			background: var(--color-zinc-800);
+		}
+		.shift-bits,
+		.shift-steps li {
+			color: var(--color-zinc-300);
+		}
+		.shift-bit.is-one,
+		.shift-note {
+			color: var(--color-blue-400);
+		}
+		.shift-dropped {
+			border-color: var(--color-zinc-700);
+			background: color-mix(in oklab, var(--color-zinc-900) 72%, transparent);
+		}
+	}
+
+	/* Reduced motion and the paused default both show the finished shift. */
+	.shift-bits {
+		transform: translateX(calc(var(--cell) * 2));
+	}
+
+	@media (prefers-reduced-motion: no-preference) {
+		.shift-bits {
+			transform: none;
+			animation: shift-bits var(--loop) infinite paused;
+		}
+		.shift-steps li {
+			animation: var(--loop) infinite paused;
+		}
+		.shift-steps li:nth-child(1) {
+			animation-name: shift-step-1;
+		}
+		.shift-steps li:nth-child(2) {
+			animation-name: shift-step-2;
+		}
+		.shift-steps li:nth-child(3) {
+			animation-name: shift-step-3;
+		}
+		.is-playing :is(.shift-bits, .shift-steps li) {
+			animation-play-state: running;
+		}
+	}
+
+	@keyframes shift-bits {
+		0%,
+		16% {
+			transform: translateX(0);
+			opacity: 1;
+			animation-timing-function: var(--ease);
+		}
+		24%,
+		50% {
+			transform: translateX(var(--cell));
+			animation-timing-function: var(--ease);
+		}
+		58%,
+		86% {
+			transform: translateX(calc(var(--cell) * 2));
+			opacity: 1;
+		}
+		91% {
+			transform: translateX(calc(var(--cell) * 2));
+			opacity: 0;
+		}
+		92% {
+			transform: translateX(0);
+			opacity: 0;
+		}
+		100% {
+			transform: translateX(0);
+			opacity: 1;
+		}
+	}
+
+	/* Each line is full strength while its shift is on screen, faded otherwise. */
+	@keyframes shift-step-1 {
+		0%, 18%, 94%, 100% { opacity: 1; }
+		22%, 90% { opacity: 0.35; }
+	}
+	@keyframes shift-step-2 {
+		0%, 18%, 56%, 100% { opacity: 0.35; }
+		22%, 52% { opacity: 1; }
+	}
+	@keyframes shift-step-3 {
+		0%, 52%, 94%, 100% { opacity: 0.35; }
+		56%, 90% { opacity: 1; }
+	}
+</style>

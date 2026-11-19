@@ -1,0 +1,99 @@
+---
+// The ins_mem array drawn as 32-bit rows of four bytes. Each cell holds its byte
+// address; the blue cell is the word's lowest byte, which is where A points.
+const ROW_H = 40;
+const GAP = 10;
+const CELL_W = 72;
+const LEFT = 72; // mem[i] label column
+const TOP = 30; // byte-lane header
+const CELLS_X = LEFT;
+const lanes = ['31:24', '23:16', '15:8', '7:0'];
+const hex = (n: number) => '0x' + n.toString(16).toUpperCase().padStart(2, '0');
+
+// Rows drawn in full, then an ellipsis gap, then the last word.
+const rows = [0, 1, 2, 3, null, 63];
+const y = (slot: number) => TOP + slot * (ROW_H + GAP);
+const height = y(rows.length) - GAP + 2;
+const width = CELLS_X + CELL_W * 4 + 1;
+---
+
+<svg
+	viewBox={`0 0 ${width} ${height}`}
+	role="img"
+	aria-labelledby="mem-array-title mem-array-desc"
+	class="block h-auto w-full font-[inherit] text-[13px]"
+>
+	<title id="mem-array-title">The mem array as rows of bytes</title>
+	<desc id="mem-array-desc">
+		64 rows, mem[0] to mem[63], each a 32-bit word split into four bytes. Row n holds byte
+		addresses 4n to 4n+3, and A points at the lowest of them: 0x00 for mem[0], 0x04 for mem[1],
+		0x08 for mem[2], up to 0xFC for mem[63].
+	</desc>
+
+	{
+		lanes.map((lane, i) => (
+			<text
+				x={CELLS_X + CELL_W * i + CELL_W / 2}
+				y={TOP - 12}
+				text-anchor="middle"
+				class="fill-zinc-400 text-[11px]"
+			>
+				{lane}
+			</text>
+		))
+	}
+
+	{
+		rows.map((row, slot) =>
+			row === null ? (
+				<g class="fill-zinc-400 dark:fill-zinc-500">
+					{[-9, 0, 9].map((dy) => (
+						<circle cx={CELLS_X + CELL_W * 2} cy={y(slot) + ROW_H / 2 + dy} r="1.75" />
+					))}
+				</g>
+			) : (
+				<g>
+					<text
+						x={LEFT - 12}
+						y={y(slot) + ROW_H / 2 + 4.5}
+						text-anchor="end"
+						class="fill-zinc-600 dark:fill-zinc-300"
+					>
+						mem[{row}]
+					</text>
+					{[3, 2, 1, 0].map((byte, i) => {
+						const lowest = byte === 0;
+						return (
+							<g>
+								<rect
+									x={CELLS_X + CELL_W * i + 0.5}
+									y={y(slot) + 0.5}
+									width={CELL_W - 1}
+									height={ROW_H - 1}
+									class:list={[
+										lowest
+											? "fill-blue-500/15 stroke-blue-500 dark:fill-blue-400/15 dark:stroke-blue-400"
+											: "fill-zinc-100 stroke-zinc-300 dark:fill-zinc-800 dark:stroke-zinc-700",
+									]}
+								/>
+								<text
+									x={CELLS_X + CELL_W * i + CELL_W / 2}
+									y={y(slot) + ROW_H / 2 + 4.5}
+									text-anchor="middle"
+									class:list={[
+										"text-[12px]",
+										lowest
+											? "fill-blue-600 dark:fill-blue-300"
+											: "fill-zinc-500 dark:fill-zinc-400",
+									]}
+								>
+									{hex(row * 4 + byte)}
+								</text>
+							</g>
+						);
+					})}
+				</g>
+			),
+		)
+	}
+</svg>
