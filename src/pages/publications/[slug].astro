@@ -3,6 +3,8 @@ import { type CollectionEntry, getCollection, render } from 'astro:content';
 import SiteLayout from '../../layouts/SiteLayout.astro';
 import TableOfContents from '../../components/TableOfContents.astro';
 import { tocHeadings } from '../../lib/toc';
+import { lastCommitDate } from '../../lib/last-commit';
+import FormattedDate from '../../components/FormattedDate.astro';
 import { SITE_TITLE } from '../../consts';
 
 export async function getStaticPaths() {
@@ -19,6 +21,7 @@ const post = Astro.props;
 const { title, description, published } = post.data;
 const { Content, headings } = await render(post);
 const toc = tocHeadings(headings);
+const lastUpdated = published ? undefined : await lastCommitDate(post.filePath);
 ---
 
 <SiteLayout title={`${title} | ${SITE_TITLE}`} description={description}>
@@ -30,6 +33,7 @@ const toc = tocHeadings(headings);
 			!published && (
 				<p class="text-zinc-600 dark:text-zinc-400 text-sm italic">
 					⚠️ This article is a work in progress and may contain errors.
+					{lastUpdated && <> Last updated <FormattedDate date={lastUpdated} />.</>}
 				</p>
 			)
 		}
