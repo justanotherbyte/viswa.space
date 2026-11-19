@@ -34,6 +34,10 @@ const projects = defineCollection({
 			image: z.union([z.string().url(), image()]),
 			// object-position for the hero/card crop, when the focal point isn't centered.
 			imagePosition: z.enum(['top', 'center', 'bottom']).default('center'),
+			// 'contain' shows the whole image without cropping, for logos and other wide or transparent images.
+			imageFit: z.enum(['cover', 'contain']).default('cover'),
+			// Any CSS color, shown behind the image (visible with imageFit: 'contain' or transparent images).
+			imageBg: z.string().default('transparent'),
 			// In-progress projects stay reachable by direct link (with a WIP notice)
 			// but are excluded from listings.
 			inProgress: z.boolean().default(false),

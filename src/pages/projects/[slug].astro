@@ -19,7 +19,7 @@ export async function getStaticPaths() {
 type Props = CollectionEntry<"projects">;
 
 const project = Astro.props;
-const { title, description, date, image, imagePosition, inProgress } =
+const { title, description, date, image, imagePosition, imageFit, imageBg, inProgress } =
 	project.data;
 const { Content, headings } = await render(project);
 const toc = tocHeadings(headings);
@@ -31,7 +31,8 @@ const positionClass = {
 	center: "object-center",
 	bottom: "object-bottom",
 }[imagePosition];
-const heroClass = `w-full max-h-96 object-cover ${positionClass} rounded-sm mb-4`;
+const fitClass = { cover: "object-cover", contain: "object-contain p-8" }[imageFit];
+const heroClass = `w-full max-h-96 ${fitClass} ${positionClass} rounded-sm mb-4`;
 ---
 
 <SiteLayout
@@ -49,7 +50,7 @@ const heroClass = `w-full max-h-96 object-cover ${positionClass} rounded-sm mb-4
 	<div>
 		{
 			typeof image === "string" ? (
-				<img src={image} alt={title} class={heroClass} />
+				<img src={image} alt={title} class={heroClass} style={{ background: imageBg }} />
 			) : (
 				<Image
 						src={image}
@@ -57,7 +58,7 @@ const heroClass = `w-full max-h-96 object-cover ${positionClass} rounded-sm mb-4
 						widths={[800, 1216, 1600]}
 						sizes="(max-width: 1280px) 100vw, 1216px"
 						quality={90}
-						class={heroClass}
+						class={heroClass} style={{ background: imageBg }}
 					/>
 			)
 		}
@@ -68,11 +69,8 @@ const heroClass = `w-full max-h-96 object-cover ${positionClass} rounded-sm mb-4
 		{
 			inProgress && (
 				<p class="text-zinc-600 dark:text-zinc-400 text-xs mt-2">
-					⚠️
-					<span class="">
-						This article is in the works, and will soon be
+					⚠️ This article is in the works, and will soon be
 						completed.
-					</span>
 				</p>
 			)
 		}

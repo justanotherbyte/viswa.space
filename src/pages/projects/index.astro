@@ -22,6 +22,8 @@ const projects = (await getCollection('projects')).sort(
 							description={project.data.description}
 							image={project.data.image}
 							imagePosition={project.data.imagePosition}
+							imageFit={project.data.imageFit}
+							imageBg={project.data.imageBg}
 							readingTime={readingTime(project.body ?? '')}
 							slug={project.id}
 						/>
