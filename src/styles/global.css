@@ -75,3 +75,42 @@ html {
 		color: var(--color-blue-400);
 	}
 }
+
+/* External links in articles (see src/lib/rehype-link-chips.ts). Unlayered, so it
+   beats the [&_a]:text-blue-400 utilities on the article wrappers. */
+a.link-chip {
+	padding: 0.1em 0.5em 0.1em 0.4em;
+	box-decoration-break: clone;
+	-webkit-box-decoration-break: clone;
+	border: 1px solid var(--color-zinc-300);
+	background-color: var(--color-zinc-100);
+	color: var(--color-zinc-800);
+	text-decoration: none;
+	transition: border-color 150ms var(--ease-out), color 150ms var(--ease-out);
+}
+
+a.link-chip:hover {
+	border-color: var(--color-blue-500);
+	color: var(--color-blue-600);
+}
+
+.link-chip-icon {
+	display: inline;
+	width: 1em;
+	height: 1em;
+	margin: 0 0.4em 0 0 !important;
+	vertical-align: -0.125em;
+}
+
+@media (prefers-color-scheme: dark) {
+	a.link-chip {
+		border-color: var(--color-zinc-700);
+		background-color: var(--color-zinc-900);
+		color: var(--color-zinc-200);
+	}
+
+	a.link-chip:hover {
+		border-color: var(--color-blue-400);
+		color: var(--color-blue-400);
+	}
+}

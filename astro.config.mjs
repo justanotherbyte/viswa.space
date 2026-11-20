@@ -7,6 +7,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { defineConfig, fontProviders } from 'astro/config';
 import rehypeKatex from 'rehype-katex';
 import remarkMath from 'remark-math';
+import { rehypeLinkChips } from './src/lib/rehype-link-chips.ts';
 import { remarkCallouts } from './src/lib/remark-callouts.ts';
 
 // https://astro.build/config
@@ -17,7 +18,7 @@ export default defineConfig({
 		// MDX inherits this processor too (extendMarkdownConfig defaults to true).
 		processor: unified({
 			remarkPlugins: [remarkMath, remarkCallouts],
-			rehypePlugins: [rehypeKatex],
+			rehypePlugins: [rehypeKatex, rehypeLinkChips],
 		}),
 		// Matches the original Next.js site: plain <pre><code class="language-x">
 		// output, highlighted client-side by highlight.js (see the article layouts)
