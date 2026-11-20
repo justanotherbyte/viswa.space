@@ -19,10 +19,8 @@ const { title, description, pubDate, updatedDate, heroImage, published } =
 			rel="stylesheet"
 			href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css"
 		/>
-		<link
-			rel="stylesheet"
-			href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/tokyo-night-dark.min.css"
-		/>
+		<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/tokyo-night-light.min.css" />
+		<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/tokyo-night-dark.min.css" />
 		<style>
 			main {
 				width: calc(100% - 2em);
@@ -80,7 +78,7 @@ const { title, description, pubDate, updatedDate, heroImage, published } =
 						)
 					}
 				</div>
-				<div class="prose">
+				<div class="prose article-body">
 					<div class="title">
 						<div class="date">
 							<FormattedDate date={pubDate} />

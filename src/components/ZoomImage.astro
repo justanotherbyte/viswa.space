@@ -1,0 +1,94 @@
+---
+// An article image that opens full screen on click. Wide figures (schematics)
+// scroll sideways on narrow screens instead of shrinking past legibility.
+import { Image } from "astro:assets";
+import type { ImageMetadata } from "astro";
+import Icon from "./Icon.astro";
+
+interface Props {
+	src: ImageMetadata;
+	alt: string;
+}
+
+const { src, alt } = Astro.props;
+---
+
+<button type="button" class="zoom-trigger group relative block w-full cursor-zoom-in focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500" aria-label={`Expand image: ${alt}`}>
+	<Image src={src} alt={alt} class="w-full rounded-sm" />
+	<span class="zoom-hint absolute right-2 bottom-2 p-1 text-zinc-300 bg-zinc-900/75 duration-200 group-hover:opacity-100 group-focus-visible:opacity-100">
+		<Icon name="expand" class="w-3.5 h-3.5" />
+	</span>
+</button>
+
+<dialog aria-label={alt} class="zoom-viewer m-0 h-dvh max-h-none w-screen max-w-none bg-zinc-950 p-0 text-zinc-300 backdrop:bg-transparent">
+	<div class="flex h-full flex-col">
+		<div class="flex justify-end px-4 py-3">
+			<button type="button" data-close aria-label="Close image" class="p-2 -m-2 rounded-sm cursor-pointer focus-visible:outline-2 focus-visible:outline-blue-500 hover:text-white duration-200">
+				<Icon name="close" class="w-5 h-5" />
+			</button>
+		</div>
+		<div class="zoom-stage flex min-h-0 flex-1 overflow-auto px-4 pb-4">
+			<Image src={src} alt={alt} loading="lazy" class="zoom-full m-auto rounded-sm" style={{ maxWidth: `${src.width}px` }} />
+		</div>
+	</div>
+</dialog>
+
+<style>
+	.zoom-hint {
+		opacity: 0;
+	}
+
+	/* touch screens have no hover, so the hint is always shown */
+	@media (hover: none) {
+		.zoom-hint {
+			opacity: 1;
+		}
+	}
+
+	/* fills the screen width, but never narrower than 64rem: below that the
+	   schematic labels are unreadable, so phones scroll sideways instead */
+	.zoom-full {
+		width: max(100%, 64rem);
+		height: auto;
+	}
+
+	.zoom-viewer {
+		opacity: 0;
+		transition:
+			opacity 250ms var(--ease-out),
+			display 250ms allow-discrete,
+			overlay 250ms allow-discrete;
+	}
+
+	.zoom-viewer[open] {
+		opacity: 1;
+	}
+
+	@starting-style {
+		.zoom-viewer[open] {
+			opacity: 0;
+		}
+	}
+
+	:global(html:has(dialog[open])) {
+		overflow: hidden;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.zoom-viewer {
+			transition-duration: 150ms;
+		}
+	}
+</style>
+
+<script>
+	document.querySelectorAll<HTMLButtonElement>(".zoom-trigger").forEach((trigger) => {
+		const viewer = trigger.nextElementSibling as HTMLDialogElement;
+		trigger.addEventListener("click", () => viewer.showModal());
+		viewer.querySelector("[data-close]")!.addEventListener("click", () => viewer.close());
+		// clicking anywhere but the image closes the viewer
+		viewer.addEventListener("click", (e) => {
+			if (!(e.target as Element).closest("img")) viewer.close();
+		});
+	});
+</script>

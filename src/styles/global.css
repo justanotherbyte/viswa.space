@@ -114,3 +114,43 @@ a.link-chip:hover {
 		color: var(--color-blue-400);
 	}
 }
+
+/* Article lists read as part of the prose: same color as paragraphs, a dim
+   hanging "-" in a 2ch indent (like the callout label), no disc. */
+.article-body :is(ul, ol) {
+	padding-left: 2ch;
+	color: var(--color-zinc-600);
+}
+
+.article-body ul {
+	list-style: "- ";
+}
+
+.article-body ol {
+	list-style: decimal;
+}
+
+/* Markdown lists written as "0. 0. 0." (start="0") number from 1.
+   counter-set, not counter-reset: Chrome lets <ol start> beat counter-reset. */
+.article-body ol[start="0"] > li:first-child {
+	counter-set: list-item 1;
+}
+
+.article-body li::marker {
+	color: var(--color-zinc-400);
+}
+
+.article-body li + li,
+.article-body li > :is(ul, ol) {
+	margin-top: 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+	.article-body :is(ul, ol) {
+		color: var(--color-zinc-300);
+	}
+
+	.article-body li::marker {
+		color: var(--color-zinc-600);
+	}
+}

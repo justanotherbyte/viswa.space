@@ -1,0 +1,103 @@
+---
+// lw x6, -4(x9) split into its I-type fields, one coloured block per field.
+// Each cell is one bit; the bit range sits above and the decoded value below.
+const BIT = 20;
+const GAP = 6; // space between fields
+const TOP = 22; // bit-range labels
+const CELL_H = 36;
+
+const fields = [
+	{ name: 'imm[11:0]', bits: '111111111100', hi: 31, value: '-4', color: 'blue' },
+	{ name: 'rs1', bits: '01001', hi: 19, value: 'x9', color: 'emerald' },
+	{ name: 'funct3', bits: '010', hi: 14, value: 'lw', color: 'amber' },
+	{ name: 'rd', bits: '00110', hi: 11, value: 'x6', color: 'violet' },
+	{ name: 'op', bits: '0000011', hi: 6, value: 'load', color: 'rose' },
+];
+
+// Full class strings so Tailwind sees every one.
+const palette: Record<string, { cell: string; text: string }> = {
+	blue: {
+		cell: 'fill-blue-500/15 stroke-blue-500 dark:fill-blue-400/15 dark:stroke-blue-400',
+		text: 'fill-blue-600 dark:fill-blue-300',
+	},
+	emerald: {
+		cell: 'fill-emerald-500/15 stroke-emerald-500 dark:fill-emerald-400/15 dark:stroke-emerald-400',
+		text: 'fill-emerald-600 dark:fill-emerald-300',
+	},
+	amber: {
+		cell: 'fill-amber-500/15 stroke-amber-500 dark:fill-amber-400/15 dark:stroke-amber-400',
+		text: 'fill-amber-600 dark:fill-amber-300',
+	},
+	violet: {
+		cell: 'fill-violet-500/15 stroke-violet-500 dark:fill-violet-400/15 dark:stroke-violet-400',
+		text: 'fill-violet-600 dark:fill-violet-300',
+	},
+	rose: {
+		cell: 'fill-rose-500/15 stroke-rose-500 dark:fill-rose-400/15 dark:stroke-rose-400',
+		text: 'fill-rose-600 dark:fill-rose-300',
+	},
+};
+
+let x = 0;
+const laid = fields.map((f) => {
+	const out = { ...f, x, w: f.bits.length * BIT, lo: f.hi - f.bits.length + 1 };
+	x += out.w + GAP;
+	return out;
+});
+const width = x - GAP;
+const height = TOP + CELL_H + 46;
+---
+
+<svg
+	viewBox={`0 0 ${width} ${height}`}
+	role="img"
+	aria-labelledby="instr-fields-title instr-fields-desc"
+	class="block h-auto w-full font-[inherit] text-[13px]"
+>
+	<title id="instr-fields-title">The fields of lw x6, -4(x9)</title>
+	<desc id="instr-fields-desc">
+		The 32-bit I-type instruction split into fields. Bits 31 to 20 are imm[11:0] = 111111111100,
+		which is -4. Bits 19 to 15 are rs1 = 01001, register x9. Bits 14 to 12 are funct3 = 010, which
+		selects lw. Bits 11 to 7 are rd = 00110, register x6. Bits 6 to 0 are op = 0000011, a load.
+	</desc>
+
+	{
+		laid.map((f) => {
+			const c = palette[f.color];
+			const mid = f.x + f.w / 2;
+			return (
+				<g>
+					<text x={f.x + 2} y={TOP - 8} class="fill-zinc-400 text-[11px]">{f.hi}</text>
+					<text x={f.x + f.w - 2} y={TOP - 8} text-anchor="end" class="fill-zinc-400 text-[11px]">
+						{f.lo}
+					</text>
+					{[...f.bits].map((b, i) => (
+						<g>
+							<rect
+								x={f.x + i * BIT + 0.5}
+								y={TOP + 0.5}
+								width={BIT - 1}
+								height={CELL_H - 1}
+								class={c.cell}
+							/>
+							<text
+								x={f.x + i * BIT + BIT / 2}
+								y={TOP + CELL_H / 2 + 4.5}
+								text-anchor="middle"
+								class={c.text}
+							>
+								{b}
+							</text>
+						</g>
+					))}
+					<text x={mid} y={TOP + CELL_H + 18} text-anchor="middle" class:list={[c.text, 'font-semibold']}>
+						{f.name}
+					</text>
+					<text x={mid} y={TOP + CELL_H + 36} text-anchor="middle" class="fill-zinc-500 dark:fill-zinc-400">
+						{f.value}
+					</text>
+				</g>
+			);
+		})
+	}
+</svg>
