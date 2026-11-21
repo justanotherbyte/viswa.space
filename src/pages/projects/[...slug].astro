@@ -10,14 +10,14 @@ import { lastCommitDate } from "../../lib/last-commit";
 import { SITE_TITLE } from "../../consts";
 import SeriesIndex from "../../components/series/SeriesIndex.astro";
 import SeriesNav from "../../components/series/SeriesNav.astro";
-import { seriesTree, flatten, seriesMeta } from "../../lib/series";
+import { seriesTree, flatten, seriesMeta, isGroup } from "../../lib/series";
 
 export async function getStaticPaths() {
 	const projects = await getCollection("projects");
-	return projects.map((project) => ({
-		params: { slug: project.id },
-		props: { project, series: seriesTree(projects, project.id.split("/")[0]) },
-	}));
+	return projects
+		.map((project) => ({ project, series: seriesTree(projects, project.id.split("/")[0]) }))
+		.filter(({ project, series }) => !flatten(series).some((n) => n.entry.id === project.id && isGroup(n)))
+		.map((props) => ({ params: { slug: props.project.id }, props }));
 }
 
 interface Props {
@@ -29,13 +29,15 @@ interface Props {
 const { project, series } = Astro.props;
 const isRoot = project.id === series.entry.id;
 const isSeries = series.children.length > 0;
-const order = flatten(series);
-const index = order.findIndex((n) => n.entry.id === project.id);
-const node = order[index];
+const all = flatten(series);
+const node = all.find((n) => n.entry.id === project.id)!;
+// Reading order skips groups, which have no page.
+const order = all.filter((n) => !isGroup(n));
+const index = order.indexOf(node);
 const prev = isSeries ? order[index - 1] : undefined;
 const next = isSeries ? order[index + 1] : undefined;
 // Ancestors, root first, for the breadcrumb.
-const crumbs = order.filter((n) => n !== node && project.id.startsWith(`${n.entry.id}/`));
+const crumbs = all.filter((n) => n !== node && project.id.startsWith(`${n.entry.id}/`));
 // Chapter pages carry the series nav in the sidebar; the landing page lists it in the body.
 const sidebar = isSeries && !isRoot;
 const { title, description, date, image, imagePosition, imageFit, imageBg, inProgress } =
@@ -88,9 +90,13 @@ const heroClass = `w-full max-h-96 ${fitClass} ${positionClass} rounded-sm mb-4`
 						{crumbs.map((c, i) => (
 							<li class="flex gap-x-2">
 								{i > 0 && <span aria-hidden="true" class="text-zinc-400 dark:text-zinc-600">/</span>}
-								<a href={`/projects/${c.entry.id}`} class="hover:text-blue-400 duration-200">
-									{c.entry.data.title}
-								</a>
+								{isGroup(c) ? (
+									<span>{c.entry.data.title}</span>
+								) : (
+									<a href={`/projects/${c.entry.id}`} class="hover:text-blue-400 duration-200">
+										{c.entry.data.title}
+									</a>
+								)}
 							</li>
 						))}
 					</ol>

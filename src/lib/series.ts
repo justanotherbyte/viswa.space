@@ -3,9 +3,10 @@ import { readingTime } from './reading-time';
 
 // A series is a folder under src/content/projects:
 //   zero-to-riscv/index.mdx               -> /projects/zero-to-riscv (the landing page)
-//   zero-to-riscv/single-cycle/index.mdx  -> a group, also a page
+//   zero-to-riscv/single-cycle/index.mdx  -> a group (title + description, no page)
 //   zero-to-riscv/single-cycle/data-memory.mdx -> a chapter
-// Every folder needs an index.mdx, and siblings sort by `order`.
+// Every folder needs an index.mdx, and siblings sort by `order`. A group's
+// index.mdx only supplies its title and description; groups get no page.
 
 type Project = CollectionEntry<'projects'>;
 
@@ -34,6 +35,8 @@ export function seriesTree(all: Project[], rootId: string): SeriesNode {
 
 // Reading order: the root, then depth-first through groups and chapters.
 export const flatten = (node: SeriesNode): SeriesNode[] => [node, ...node.children.flatMap(flatten)];
+
+export const isGroup = (node: SeriesNode) => node.number !== '' && node.children.length > 0;
 
 export const depth = (node: SeriesNode) => (node.number ? node.number.split('.').length : 0);
 
