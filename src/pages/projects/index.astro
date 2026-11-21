@@ -1,14 +1,11 @@
 ---
-import { getCollection } from 'astro:content';
 import SiteLayout from '../../layouts/SiteLayout.astro';
 import Section from '../../components/Section.astro';
 import ProjectCard from '../../components/cards/ProjectCard.astro';
-import { readingTime } from '../../lib/reading-time';
+import { topLevelProjects } from '../../lib/series';
 import { SITE_TITLE } from '../../consts';
 
-const projects = (await getCollection('projects')).sort(
-	(a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
-);
+const projects = await topLevelProjects();
 ---
 
 <SiteLayout title={`Projects | ${SITE_TITLE}`} description="Write-ups on things I've built.">
@@ -24,7 +21,7 @@ const projects = (await getCollection('projects')).sort(
 							imagePosition={project.data.imagePosition}
 							imageFit={project.data.imageFit}
 							imageBg={project.data.imageBg}
-							readingTime={readingTime(project.body ?? '')}
+							readingTime={project.meta}
 							slug={project.id}
 						/>
 					))}

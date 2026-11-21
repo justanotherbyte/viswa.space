@@ -1,0 +1,44 @@
+---
+title: "Putting the memories together"
+description: "Decoding lw x6, -4(x9) and wiring the program counter, instruction memory and register file into one module."
+order: 5
+---
+
+import Side from '../../../../components/Side.astro';
+import InstrFields from '../../../../components/riscv/InstrFields.astro';
+import ZoomImage from '../../../../components/ZoomImage.astro';
+import riscvSchematic from '../../../../assets/articles/zero-to-riscv/riscv-schematic.png';
+
+Let's put the program counter and the memories together to begin processing our instruction. We'll use the same instruction as the book: `lw x6, -4(x9)`, or `111111111100 01001 010 00110 0000011` as binary.
+
+<Side caption="lw is an I-type instruction. Reading right to left: op says it is a load, rd is the destination x6, funct3 = 010 picks a 32-bit word, rs1 is the base register x9, and imm is the 12-bit signed offset -4.">
+  <InstrFields />
+</Side>
+
+What does this instruction do? It loads a 32-bit word at address `x9 + (-4)` into `x6`. Let's think about what operations we'll need.
+
+0. Read instruction from instruction memory. This address will come from the program counter (PC).
+0. Extract the destination and source registers.
+0. Compute the address using the offset `imm`ediate and the source registerr `rs1`.
+0. Read the value at said address.
+0. Store the data at said adress into the destination address `rd`.
+0. Increment program counter (by `+4`).
+
+We don't have hardware to complete some of these steps yet (notably an ALU), but let's wire together the memories as much as we can so far.
+
+```verilog
+module riscv(
+  input logic clk
+);
+  logic [31:0] pc_next, pc, instr;
+  logic reg_file_WE = 1;
+
+  program_counter prog_counter ( .pc_next(pc_next), .pc(pc), .clk(clk) );
+  ins_mem ins_mem ( .A(pc), .RD(instr) );
+  reg_file reg_file( .A1(instr[19:15]), .clk(clk), .WE3(reg_file_WE) );
+
+endmodule
+```
+
+
+<ZoomImage src={riscvSchematic} alt="Vivado RTL schematic of the riscv module: the program counter feeds the instruction memory, whose output drives the register file read and write addresses." />

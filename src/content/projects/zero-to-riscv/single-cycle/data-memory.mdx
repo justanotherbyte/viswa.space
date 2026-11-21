@@ -1,0 +1,75 @@
+---
+title: "Data Memory"
+description: "Instruction memory with a write port, plus a CocoTB testbench that reads back what it wrote."
+order: 4
+---
+
+import SideBySide from '../../../../components/SideBySide.astro';
+import Side from '../../../../components/Side.astro';
+
+The data memory is implemented similarly to the Instruction Memory, except it has the ability to write to it too. In a real RISC-V architecture, the instruction memory should also be writeable (otherwise how else do you expect to flash/load instructions?).
+
+<SideBySide>
+
+<Side caption="This is incredibly similar to our instruction memory, except we include writing logic.">
+
+```verilog
+module data_mem(
+  input logic clk, WE,
+  input logic [31:0] A,
+  input logic [31:0] WD,
+  output logic [31:0] RD
+);
+
+  logic [31:0] mem [0:63];
+
+  assign RD = mem[A[7:2]];
+
+  always_ff @( posedge clk ) begin
+    if (WE) begin
+      mem[A[7:2]] <= WD;
+    end
+  end
+
+endmodule
+```
+
+</Side>
+
+<Side caption="We write 3 dummy values to 3 arbitrary addresses and we ensure the values are written by reading from the same addresses.">
+```python
+async def write_to_address(dut, address: int, value: int):
+  dut.WE.value = 1
+  dut.A.value = address
+  dut.WD.value = value
+  await RisingEdge(dut.clk)
+  await Timer(1, unit="ns")
+
+  dut.WE.value = 0
+
+async def read_from_address(dut, address: int) -> int:
+  dut.WE.value = 0
+  dut.A.value = address
+  await Timer(1, unit="ns")
+
+  return dut.RD.value
+
+@cocotb.test
+async def test_read_write(dut):
+  cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
+
+  await write_to_address(dut, 0x7, 0x8)
+  await write_to_address(dut, 0x8, 0xA)
+  await write_to_address(dut, 0x0, 0xF)
+
+  assert await read_from_address(dut, 0x0) == 0xF
+  assert await read_from_address(dut, 0x7) == 0x8
+  assert await read_from_address(dut, 0x8) == 0xA
+  ```
+
+</Side>
+
+
+</SideBySide>
+
+

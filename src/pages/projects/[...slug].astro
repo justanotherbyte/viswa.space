@@ -1,0 +1,229 @@
+---
+import { type CollectionEntry, getCollection, render } from "astro:content";
+import { Image } from "astro:assets";
+import SiteLayout from "../../layouts/SiteLayout.astro";
+import FormattedDate from "../../components/FormattedDate.astro";
+import TableOfContents from "../../components/TableOfContents.astro";
+import { readingTime } from "../../lib/reading-time";
+import { tocHeadings } from "../../lib/toc";
+import { lastCommitDate } from "../../lib/last-commit";
+import { SITE_TITLE } from "../../consts";
+import SeriesIndex from "../../components/series/SeriesIndex.astro";
+import SeriesNav from "../../components/series/SeriesNav.astro";
+import { seriesTree, flatten, seriesMeta, isGroup } from "../../lib/series";
+
+export async function getStaticPaths() {
+	const projects = await getCollection("projects");
+	return projects
+		.map((project) => ({ project, series: seriesTree(projects, project.id.split("/")[0]) }))
+		.filter(({ project, series }) => !flatten(series).some((n) => n.entry.id === project.id && isGroup(n)))
+		.map((props) => ({ params: { slug: props.project.id }, props }));
+}
+
+interface Props {
+	project: CollectionEntry<"projects">;
+	// The whole series this page belongs to; a lone article is a series of one.
+	series: ReturnType<typeof seriesTree>;
+}
+
+const { project, series } = Astro.props;
+const isRoot = project.id === series.entry.id;
+const isSeries = series.children.length > 0;
+const all = flatten(series);
+const node = all.find((n) => n.entry.id === project.id)!;
+// Reading order skips groups, which have no page.
+const order = all.filter((n) => !isGroup(n));
+const index = order.indexOf(node);
+const prev = isSeries ? order[index - 1] : undefined;
+const next = isSeries ? order[index + 1] : undefined;
+// Ancestors, root first, for the breadcrumb.
+const crumbs = all.filter((n) => n !== node && project.id.startsWith(`${n.entry.id}/`));
+// Chapter pages carry the series nav in the sidebar; the landing page lists it in the body.
+const sidebar = isSeries && !isRoot;
+const { title, description, date, image, imagePosition, imageFit, imageBg, inProgress } =
+	project.data;
+const { Content, headings } = await render(project);
+const toc = tocHeadings(headings);
+const hasAside = sidebar || toc.length > 0;
+// Chapters show their last commit date. A series root's WIP note uses the
+// newest commit across all its files.
+const commitDates = (
+	await Promise.all(
+		(isRoot ? flatten(series) : [node]).map((n) => lastCommitDate(n.entry.filePath)),
+	)
+).filter((d): d is Date => d !== undefined);
+const newest = commitDates.length ? new Date(Math.max(...commitDates.map(Number))) : undefined;
+const lastUpdated = inProgress ? newest : undefined;
+
+// Written out explicitly (not `object-${imagePosition}`) so Tailwind's static
+// scanner can see the literal class names and actually generate them.
+const positionClass = {
+	top: "object-top",
+	center: "object-center",
+	bottom: "object-bottom",
+}[imagePosition];
+const fitClass = { cover: "object-cover", contain: "object-contain p-8" }[imageFit];
+const heroClass = `w-full max-h-96 ${fitClass} ${positionClass} rounded-sm mb-4`;
+---
+
+<SiteLayout
+	title={`${title} | ${SITE_TITLE}`}
+	description={description}
+>
+	<link
+		rel="stylesheet"
+		href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css"
+	/>
+	<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/tokyo-night-light.min.css" />
+	<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/tokyo-night-dark.min.css" />
+	<div>
+		{
+			!image ? null : typeof image === "string" ? (
+				<img src={image} alt={title} class={heroClass} style={{ background: imageBg }} />
+			) : (
+				<Image
+						src={image}
+						alt={title}
+						widths={[800, 1216, 1600]}
+						sizes="(max-width: 1280px) 100vw, 1216px"
+						quality={90}
+						class={heroClass} style={{ background: imageBg }}
+					/>
+			)
+		}
+		{
+			crumbs.length > 0 && (
+				<nav aria-label="Breadcrumb" class="mb-3 text-sm text-zinc-500 dark:text-zinc-400">
+					<ol class="flex flex-wrap gap-x-2">
+						{crumbs.map((c, i) => (
+							<li class="flex gap-x-2">
+								{i > 0 && <span aria-hidden="true" class="text-zinc-400 dark:text-zinc-600">/</span>}
+								{isGroup(c) ? (
+									<span>{c.entry.data.title}</span>
+								) : (
+									<a href={`/projects/${c.entry.id}`} class="hover:text-blue-400 duration-200">
+										{c.entry.data.title}
+									</a>
+								)}
+							</li>
+						))}
+					</ol>
+				</nav>
+			)
+		}
+		<h1 class="dark:text-white text-lg font-semibold mb-2">
+			{node.number && <span class="mr-3 font-normal tabular-nums text-zinc-400">{node.number}</span>}
+			{title}
+		</h1>
+		<p class="text-zinc-600 dark:text-zinc-400 text-sm">
+			{isRoot ? (
+				date && <><FormattedDate date={date} /> · </>
+			) : (
+				newest && <>Updated <FormattedDate date={newest} /> · </>
+			)}
+			{isRoot && isSeries ? seriesMeta(series) : readingTime(project.body ?? "")}
+		</p>
+		{
+			inProgress && (
+				<p class="text-zinc-600 dark:text-zinc-400 text-xs mt-2">
+					⚠️ This article is in the works, and will soon be
+						completed.
+					{lastUpdated && <> Last updated <FormattedDate date={lastUpdated} />.</>}
+				</p>
+			)
+		}
+
+		<hr class="my-4 h-0.5 border-t-0 bg-zinc-300 dark:bg-white/10" />
+		{
+			sidebar && (
+				<details class="lg:hidden mb-4 rounded-sm border border-zinc-300 dark:border-white/10 px-3 py-2">
+					<summary class="cursor-pointer font-semibold dark:text-white">
+						Chapters
+					</summary>
+					<div class="mt-3">
+						<SeriesNav root={series} currentId={project.id} />
+					</div>
+				</details>
+			)
+		}
+		{
+			toc.length > 0 && (
+				<div class="lg:hidden mb-4">
+					<TableOfContents headings={toc} variant="inline" />
+				</div>
+			)
+		}
+		<div
+			class:list={[
+				hasAside &&
+					(sidebar
+						? "lg:grid lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-10"
+						: "lg:grid lg:grid-cols-[minmax(0,1fr)_14rem] lg:gap-8"),
+			]}
+		>
+			<div
+				class="article-body flow-root dark:text-white [&_:is(h1,h2,h3,h4)]:scroll-mt-24 [&>*]:mb-4 [&_img:not(.float-image)]:mx-auto [&_h3]:underline [&_a]:text-blue-400 [&_a]:hover:text-blue-600 [&>h1]:text-xl [&>h1]:font-bold [&>h1]:clear-both [&>h2]:text-lg [&>h2]:font-semibold [&>h2]:clear-both [&>p]:dark:text-zinc-300 [&>p]:text-zinc-600"
+			>
+				<Content />
+			</div>
+			{
+				hasAside && (
+					<aside class="hidden lg:block">
+						<div class="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto space-y-8">
+							{sidebar && <SeriesNav root={series} currentId={project.id} />}
+							{toc.length > 0 && <TableOfContents headings={toc} variant="sidebar" />}
+						</div>
+					</aside>
+				)
+			}
+		</div>
+		{
+			node.children.length > 0 && (
+				<ol class="mt-4">
+					<SeriesIndex node={node} />
+				</ol>
+			)
+		}
+		{
+			(prev || next) && (
+				<nav aria-label="Previous and next" class="mt-12 grid sm:grid-cols-2 gap-2">
+					{prev ? (
+						<a
+							href={`/projects/${prev.entry.id}`}
+							class="group block p-4 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 active:opacity-75 duration-100"
+						>
+							<span class="block text-xs text-zinc-400">Previous</span>
+							<span class="block mt-1 dark:text-white group-hover:text-blue-400 duration-200">
+								{prev.number && <span class="mr-2 tabular-nums text-zinc-400">{prev.number}</span>}
+								{prev.entry.data.title}
+							</span>
+						</a>
+					) : <span />}
+					{next && (
+						<a
+							href={`/projects/${next.entry.id}`}
+							class="group block p-4 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 active:opacity-75 duration-100 sm:text-right"
+						>
+							<span class="block text-xs text-zinc-400">Next</span>
+							<span class="block mt-1 dark:text-white group-hover:text-blue-400 duration-200">
+								<span class="mr-2 tabular-nums text-zinc-400">{next.number}</span>
+								{next.entry.data.title}
+							</span>
+						</a>
+					)}
+				</nav>
+			)
+		}
+	</div>
+	<script
+		is:inline
+		src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"
+	></script>
+	<script
+		is:inline
+		src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/verilog.min.js"
+	></script>
+	<script is:inline>
+		hljs.highlightAll();
+	</script>
+</SiteLayout>

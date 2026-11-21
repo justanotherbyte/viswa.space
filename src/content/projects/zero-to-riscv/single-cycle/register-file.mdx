@@ -1,0 +1,127 @@
+---
+title: "Register File"
+description: "Thirty-two 32-bit registers with two read ports, one write port, and an x0 that always reads zero."
+order: 3
+---
+
+import SideBySide from '../../../../components/SideBySide.astro';
+import Side from '../../../../components/Side.astro';
+
+The register file holds the 32 RISC-V registers (`x0`-`x31`). The input addresses `A1`, `A2` and `A3` are all 5-bits wide. The register file here isn't byte-addressed, rather the addresses correspond to the respective register numbers.
+
+<SideBySide>
+<Side caption="The register file: two combinational read ports (A1, A2) and one write port (A3) that writes WD3 on the rising clock edge when WE3 is high.">
+
+```verilog
+module reg_file(
+  input logic [4:0] A1, A2, A3,
+  input logic [31:0] WD3,
+  input logic clk, WE3,
+  output logic [31:0] RD1, RD2
+);
+
+  logic [31:0] mem [0:31];
+
+  assign RD1 = mem[A1];
+  assign RD2 = mem[A2];
+
+  always_ff @( posedge clk ) begin : write_A3
+    if (WE3) begin
+      mem[A3] <= WD3;
+    end
+  end
+
+endmodule
+```
+
+</Side>
+<Side caption="Its cocotb test. Write 0x8 to x7 and 0xA to x8, then read both back through RD1 and RD2.">
+
+```python
+async def write_to_address(dut, address: int, value: int):
+  dut.WE3.value = 1
+  dut.WD3.value = value
+  dut.A3.value = address
+  await RisingEdge(dut.clk)
+  await Timer(1, unit="ns")
+  dut.WE3.value = 0
+
+@cocotb.test
+async def test_read_write(dut):
+  cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
+
+  await write_to_address(dut, 0x7, 0x8)
+  await write_to_address(dut, 0x8, 0xA)
+
+  dut.A1.value = 0x7
+  dut.A2.value = 0x8
+  await Timer(1, unit="ns")
+
+  assert dut.RD1.value == 0x8
+  assert dut.RD2.value == 0xA
+```
+
+</Side>
+</SideBySide>
+
+One thing I'd like to point out is the constant register `x0` which is always always `0`. We could wire `mem[0] = 0` and change our sequential condition to `WE3 && A3 != 0` but to save on flops during synthesis we can simply reduce our memory size like so:
+<SideBySide>
+
+```verilog
+module reg_file(
+  input logic [4:0] A1, A2, A3,
+  input logic [31:0] WD3,
+  input logic clk, WE3,
+  output logic [31:0] RD1, RD2
+);
+
+  logic [31:0] mem [1:31];
+
+  assign RD1 = A1 != 0 ? mem[A1] : '0;
+  assign RD2 = A2 != 0 ? mem[A2] : '0;
+
+  always_ff @( posedge clk ) begin : write_A3
+    if (WE3 && A3 != 0) begin
+      mem[A3] <= WD3;
+    end
+  end
+
+endmodule
+```
+
+<Side caption="We add additional test logic here - we attempt to write some dummy value 0xF to x0 and we ensure that x0 remains 0">
+
+```python
+async def write_to_address(dut, address: int, value: int):
+  dut.WE3.value = 1
+  dut.WD3.value = value
+  dut.A3.value = address
+  await RisingEdge(dut.clk)
+  await Timer(1, unit="ns")
+  dut.WE3.value = 0
+
+@cocotb.test
+async def test_read_write(dut):
+  cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
+
+  await write_to_address(dut, 0x7, 0x8)
+  await write_to_address(dut, 0x8, 0xA)
+  await write_to_address(dut, 0x0, 0xF)
+
+  dut.A1.value = 0x7
+  dut.A2.value = 0x8
+  await Timer(1, unit="ns")
+
+  assert dut.RD1.value == 0x8
+  assert dut.RD2.value == 0xA
+
+  dut.A1.value = 0x0
+  await Timer(1, unit="ns")
+
+  assert dut.RD1.value == 0x0
+```
+
+</Side>
+
+</SideBySide>
+
