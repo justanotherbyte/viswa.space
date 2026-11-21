@@ -1,0 +1,52 @@
+---
+import { type SeriesNode, flatten, depth } from '../../lib/series';
+
+interface Props {
+	root: SeriesNode;
+	currentId: string;
+}
+
+const { root, currentId } = Astro.props;
+const items = flatten(root).slice(1);
+
+// Written out explicitly so Tailwind's static scanner picks them up.
+const indentClass = ['', '', 'pl-5', 'pl-10', 'pl-14'];
+---
+
+<nav aria-label="Series chapters" class="text-sm">
+	<a
+		href={`/projects/${root.entry.id}`}
+		class="block mb-3 font-semibold dark:text-white hover:text-blue-400 duration-200"
+	>
+		{root.entry.data.title}
+	</a>
+	<ol class="space-y-1.5">
+		{
+			items.map((n) => {
+				const current = n.entry.id === currentId;
+				return (
+					<li class={indentClass[depth(n)] ?? 'pl-14'}>
+						<a
+							href={`/projects/${n.entry.id}`}
+							aria-current={current ? 'page' : undefined}
+							class:list={[
+								'grid grid-cols-[2.25rem_minmax(0,1fr)] duration-200',
+								current
+									? 'text-blue-400'
+									: 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white',
+								depth(n) === 1 && n.children.length > 0 && 'mt-4 first:mt-0',
+							]}
+						>
+							<span class:list={['tabular-nums', !current && 'text-zinc-400 dark:text-zinc-500']}>
+								{n.number}
+							</span>
+							<span class:list={[depth(n) === 1 && n.children.length > 0 && 'uppercase tracking-wide text-xs leading-5']}>
+								{n.entry.data.title}
+							</span>
+						</a>
+					</li>
+				);
+			})
+		}
+	</ol>
+</nav>

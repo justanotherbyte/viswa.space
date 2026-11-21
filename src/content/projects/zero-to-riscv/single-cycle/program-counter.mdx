@@ -1,0 +1,66 @@
+---
+title: "Program Counter"
+description: "A D flip-flop that hands out the next instruction address every clock cycle, and why RISC-V steps it by 4."
+date: "2026-11-17"
+order: 1
+---
+
+import SideBySide from '../../../../components/SideBySide.astro';
+import Side from '../../../../components/Side.astro';
+
+A good place to start is the program counter. We'll cover how RISC-V addressing works here. We'll start off with the storage element of the program counter here, and expand the PC to its complete form later on.
+
+This is pretty simple. We want our program counter to give us a new address every clock cycle, and we want a way to control the next instruction address (we're not necessarily always incrementing by +4, jumps etc can override this).
+
+This behaviour can be modelled incredibly simply (and flexibly) with a D-Flip-Flop (DFF) as so:
+
+<SideBySide>
+<Side caption="The program counter: a 32-bit D flip-flop that latches pc_next on every rising clock edge.">
+
+```verilog
+module program_counter(
+  input logic clk,
+  input logic [31:0] pc_next,
+  output logic [31:0] pc
+);
+
+  always_ff @( posedge clk ) begin
+    pc <= pc_next;
+  end
+
+endmodule
+```
+
+</Side>
+<Side caption="Its cocotb test. Drive pc_next, wait one rising edge, then check pc took the value.">
+
+```python
+@cocotb.test
+async def test_pc_dff(dut):
+    instruction = 0xFFC4A303 # lw x6 -4(x9)
+    cocotb.start_soon(
+      Clock(dut.clk, 10, unit="ns").start()
+    )
+
+    dut.pc_next.value = instruction
+
+    await RisingEdge(dut.clk)
+    await Timer(1, unit="ns")
+
+    assert dut.pc.value == instruction
+```
+
+</Side>
+</SideBySide>
+
+We'll expand this later to include incrementing with an ALU/specifying a specific instruction to jump to.
+
+I mentioned earlier that the PC increments by `+4`. Why? Those who've studied computer architecture before will know the program counter stores the address of the instruction currently being executed (we'll take `pc` to be the "stored" port here).
+So, why not `+1`? This comes down to how RISC-V is addressed.
+
+RISC-V is byte-addressed rather than word-addressed. This is the case for most modern ISAs as far as I'm aware. Being byte-addressed has many benefits in the modern world that I won't
+go into too much detail here about, but a few to take note of: the ISA itself has granular load and store instructions such as `lb` and `sb` so it helps to address to bytes rather than full 32-bit
+words. A lot of languages today also assume a byte-addressed model - like C for example: `sizeof(char) = 1 byte`.
+
+Being byte-addressed means to get the next address, simply incrementing by `+1` won't get us our next instruction. We'll need to increment by 32-bits, or 4 bytes, hence the `+4`.
+

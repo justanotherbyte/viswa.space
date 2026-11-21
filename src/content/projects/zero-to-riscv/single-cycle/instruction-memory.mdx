@@ -1,0 +1,64 @@
+---
+title: "Instruction Memory"
+description: "A combinational read-only memory, and how shifting the byte address right by two turns it into a word index."
+date: "2026-11-17"
+order: 2
+---
+
+import SideBySide from '../../../../components/SideBySide.astro';
+import Side from '../../../../components/Side.astro';
+import MemArray from '../../../../components/riscv/MemArray.astro';
+import ShiftDivide from '../../../../components/riscv/ShiftDivide.astro';
+
+The instruction memory is purely combinational - it combinationally reads a 32-bit instruction at address `A` onto the read data output `RD`. Let's look at how we might implement this. First, defining our ports and some memory:
+
+<SideBySide>
+<Side caption="ins_mem: 64 words of 32 bits, read combinationally at A.">
+
+```verilog
+module ins_mem (
+  input logic [31:0] A,
+  output logic [31:0] RD
+);
+
+  logic [31:0] mem [0:63];
+
+  assign RD = mem[A[7:2]];
+
+endmodule
+```
+
+</Side>
+<Side caption="The same mem array. Each row is one word of four bytes, and A points at the word's lowest byte (blue).">
+  <MemArray />
+</Side>
+</SideBySide>
+
+> [!NOTE]
+> The keen-eyed reader will notice something interesting. A 32-bit address implies $2^{32}$ possible 32-bit words of instruction memory. This is gigabytes of instruction memory, and is obviously absurd,
+> hence, we restrict our `mem` array to simply 64 (`[0:63]`) words of 32-bit (`[31:0]`) instructions. $2^{32}$ is simply the upper-bound of what RISC-V could theoretically support.
+
+RISC-V being byte-addressed means that address `A` doesn't point to a full 32-bit instruction word. So... what does it point to? and how do we access our entire instruction?
+
+Let's look at some examples first.
+
+- `A = 0x0` - Ok this seems pretty easy. We simply drive `RD` to `mem[0]`.
+- `A = 0x4` - Erm. Woah, we just skipped 3 instructions?
+- `A = 0x8` - Okay. Now I'm confused!
+
+Like I said before, the address `A` here actually points to the lowest-significant byte of our instruction. If we simply used `A` is the address in `mem`, we'd miss out many instructions.
+
+<SideBySide reverse>
+<div>
+
+If you haven't noticed, we can effectively get the right "row" in `mem` by simply dividing `A` by 4, i.e `instruction = mem[A/4]`. Cool we have a rule to follow, but how does this translate to hardware?
+Simple! Remember that shifting right is effectively a division by 2! So we just shift `A` to the right by 2 bits.
+
+`A` shifted right gives us `A[31:2]`, but our `mem` size is just 64 words, so we'll keep only the bottom 6 bits ($2^6 = 64$), hence `A[7:2]`.
+
+</div>
+<Side caption="Shifting A = 0x08 right. Each shift moves every bit one place, so the value halves: two shifts divide by 4 and land on mem[2].">
+  <ShiftDivide />
+</Side>
+</SideBySide>
+

@@ -28,10 +28,14 @@ const projects = defineCollection({
 		z.object({
 			title: z.string(),
 			description: z.string(),
-			date: z.coerce.date(),
+			// Required on top-level projects. Chapters of a series (nested files,
+			// see src/lib/series.ts) may leave date and image out.
+			date: z.coerce.date().optional(),
+			// Position among siblings in a series folder, ascending.
+			order: z.number().default(0),
 			// Either a remote URL or a local file imported via the `image()`
 			// helper — the latter gets run through Astro's optimization pipeline.
-			image: z.union([z.string().url(), image()]),
+			image: z.union([z.string().url(), image()]).optional(),
 			// object-position for the hero/card crop, when the focal point isn't centered.
 			imagePosition: z.enum(['top', 'center', 'bottom']).default('center'),
 			// 'contain' shows the whole image without cropping, for logos and other wide or transparent images.

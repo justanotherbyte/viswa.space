@@ -1,12 +1,9 @@
 ---
-import { getCollection } from 'astro:content';
 import Section from '../Section.astro';
 import ProjectCard from '../cards/ProjectCard.astro';
-import { readingTime } from '../../lib/reading-time';
+import { topLevelProjects } from '../../lib/series';
 
-const projects = (await getCollection('projects'))
-	.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
-	.slice(0, 2);
+const projects = (await topLevelProjects()).slice(0, 2);
 ---
 
 <Section id="projects" name="Projects" moreInfo="/projects">
@@ -21,7 +18,7 @@ const projects = (await getCollection('projects'))
 						imagePosition={project.data.imagePosition}
 						imageFit={project.data.imageFit}
 						imageBg={project.data.imageBg}
-						readingTime={readingTime(project.body ?? '')}
+						readingTime={project.meta}
 						slug={project.id}
 					/>
 				))}

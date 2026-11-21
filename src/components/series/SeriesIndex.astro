@@ -1,0 +1,57 @@
+---
+import type { SeriesNode } from '../../lib/series';
+import { readingTime } from '../../lib/reading-time';
+
+interface Props {
+	// The page whose children are listed. Groups become labelled blocks,
+	// deeper groups become indented runs inside their block.
+	node: SeriesNode;
+	nested?: boolean;
+}
+
+const { node, nested = false } = Astro.props;
+const href = (n: SeriesNode) => `/projects/${n.entry.id}`;
+---
+
+{
+	node.children.map((child) =>
+		child.children.length > 0 && !nested ? (
+			<li class="relative mt-10 border border-zinc-300 dark:border-zinc-700 pt-5">
+				<a
+					href={href(child)}
+					class="absolute -top-3 left-3 px-2 bg-white dark:bg-zinc-900 text-sm text-zinc-500 dark:text-zinc-400 hover:text-blue-400 duration-200"
+				>
+					<span class="tabular-nums">{child.number}</span>
+					<span class="ml-2 uppercase tracking-wide">{child.entry.data.title}</span>
+				</a>
+				<p class="px-4 pb-4 text-sm text-zinc-500 dark:text-zinc-400">{child.entry.data.description}</p>
+				<ol class="border-t border-zinc-300 dark:border-zinc-700">
+					<Astro.self node={child} nested />
+				</ol>
+			</li>
+		) : (
+			<li class="border-t border-zinc-300 dark:border-zinc-700 first:border-t-0">
+				<a
+					href={href(child)}
+					class="group grid grid-cols-[3rem_minmax(0,1fr)] gap-x-2 px-4 py-4 hover:bg-zinc-100 dark:hover:bg-zinc-800 active:opacity-75 duration-100"
+				>
+					<span class="tabular-nums text-zinc-400">{child.number}</span>
+					<span>
+						<span class="dark:text-white group-hover:text-blue-400 duration-200">
+							{child.entry.data.title}
+						</span>
+						<span class="block mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+							{child.entry.data.description}
+						</span>
+						<span class="block mt-2 text-xs text-zinc-400">{readingTime(child.entry.body ?? '')}</span>
+					</span>
+				</a>
+				{child.children.length > 0 && (
+					<ol class="ml-[4.5rem] border-l border-zinc-300 dark:border-zinc-700">
+						<Astro.self node={child} nested />
+					</ol>
+				)}
+			</li>
+		),
+	)
+}
