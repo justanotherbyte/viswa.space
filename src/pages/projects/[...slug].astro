@@ -45,7 +45,15 @@ const { title, description, date, image, imagePosition, imageFit, imageBg, inPro
 const { Content, headings } = await render(project);
 const toc = tocHeadings(headings);
 const hasAside = sidebar || toc.length > 0;
-const lastUpdated = inProgress ? await lastCommitDate(project.filePath) : undefined;
+// Chapters show their last commit date. A series root's WIP note uses the
+// newest commit across all its files.
+const commitDates = (
+	await Promise.all(
+		(isRoot ? flatten(series) : [node]).map((n) => lastCommitDate(n.entry.filePath)),
+	)
+).filter((d): d is Date => d !== undefined);
+const newest = commitDates.length ? new Date(Math.max(...commitDates.map(Number))) : undefined;
+const lastUpdated = inProgress ? newest : undefined;
 
 // Written out explicitly (not `object-${imagePosition}`) so Tailwind's static
 // scanner can see the literal class names and actually generate them.
@@ -108,7 +116,11 @@ const heroClass = `w-full max-h-96 ${fitClass} ${positionClass} rounded-sm mb-4`
 			{title}
 		</h1>
 		<p class="text-zinc-600 dark:text-zinc-400 text-sm">
-			{date && <><FormattedDate date={date} /> · </>}
+			{isRoot ? (
+				date && <><FormattedDate date={date} /> · </>
+			) : (
+				newest && <>Updated <FormattedDate date={newest} /> · </>
+			)}
 			{isRoot && isSeries ? seriesMeta(series) : readingTime(project.body ?? "")}
 		</p>
 		{
