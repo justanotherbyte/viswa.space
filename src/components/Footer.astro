@@ -1,42 +1,204 @@
 ---
-import { Image } from 'astro:assets';
-import inBugBlack from '../assets/InBug-Black.png';
-import inBugWhite from '../assets/InBug-White.png';
-import githubMark from '../assets/github-mark.png';
-import FooterArt from './FooterArt.astro';
+import Icon from './Icon.astro';
+import { MY_EMAIL } from '../consts';
 
-const isHome = Astro.url.pathname === '/';
+const links = [
+	{ label: 'About', href: '/#aboutme', icon: null },
+	{ label: 'Email', href: `mailto:${MY_EMAIL}`, icon: 'mail' },
+	{ label: 'GitHub', href: 'https://github.com/justanotherbyte', icon: 'github' },
+	{ label: 'LinkedIn', href: 'https://www.linkedin.com/in/mviswa/', icon: 'linkedin' },
+	{ label: 'Twitter', href: 'https://x.com/justanotherbyte', icon: 'x' },
+] as const;
 ---
 
-<footer>
-	{isHome && <FooterArt />}
-	<div class="container mx-auto max-w-screen-xl p-8 grid grid-cols-3 dark:text-zinc-500">
-		<div>© 2026 Viswa Marepalli</div>
-		<div class="text-center justify-self-center">
-			<a href="/#aboutme" class="hover:text-zinc-300 duration-200">About </a>
-			·
-			<a
-				href="mailto:reachvishm+site@gmail.com"
-				class="hover:text-zinc-300 duration-200"
-			>
-				Contact</a
-			>
-		</div>
-		<div class="flex space-x-3 justify-self-end hidden dark:flex">
-			<a href="https://github.com/justanotherbyte" target="_blank">
-				<img src="/github-mark-white.svg" alt="GitHub page" class="h-8 w-8" width="24" height="24" />
-			</a>
-			<a href="https://www.linkedin.com/in/viswa-marepalli/" target="_blank">
-				<Image src={inBugWhite} alt="LinkedIn page" class="h-8 w-8" width={24} height={24} />
-			</a>
-		</div>
-		<div class="flex space-x-3 justify-self-end visible dark:hidden">
-			<a href="https://github.com/justanotherbyte" target="_blank">
-				<Image src={githubMark} alt="GitHub page" class="h-8 w-8" width={24} height={24} />
-			</a>
-			<a href="https://www.linkedin.com/in/mviswa/" target="_blank">
-				<Image src={inBugBlack} alt="LinkedIn page" class="h-8 w-8" width={24} height={24} />
-			</a>
+<footer class="pixel-footer">
+	<div class="scene" id="pf-scene">
+		<canvas id="pf-canvas" tabindex="-1" role="img" aria-label="Pixel-art scene of London, South India and a desert launch site, with a playable astronaut"></canvas>
+		<p class="help walk">Arrows or WASD to move. Space to jump, again in the air for the jetpack. Hold into a wall and press Space to kick off it. Down drops. E boards VEGA, Enter launches it. Esc stops.</p>
+		<p class="help fly">Left and right steer. Space or Up burns. Down brakes. E gets out. Esc stops.</p>
+	</div>
+	<div class="pads">
+		<button type="button" data-key="left" aria-label="Move left"><Icon name="prev" class="w-6 h-6" /></button>
+		<button type="button" data-key="right" aria-label="Move right"><Icon name="next" class="w-6 h-6" /></button>
+		<button type="button" data-key="jump" aria-label="Jump" class="order-last"><Icon name="prev" class="w-6 h-6 rotate-90" /></button>
+		<button type="button" data-hop class="board ml-auto" aria-label="Board the rocket"><Icon name="rocket" class="w-6 h-6" /></button>
+		<button type="button" data-hop class="exit ml-auto" aria-label="Get out of the rocket"><Icon name="close" class="w-6 h-6" /></button>
+	</div>
+	<div class="bar">
+		<div class="container mx-auto max-w-screen-xl px-8 py-6 flex flex-wrap items-center gap-x-8 gap-y-4">
+			<span class="mr-auto">© 2026 Viswa Marepalli</span>
+			<button id="pf-play" type="button" class="launch">
+				<span data-label>Play</span>
+			</button>
+			<button id="pf-launch" type="button" class="launch">
+				<Icon name="rocket" class="w-4 h-4" />
+				<span data-label>Launch VEGA</span>
+			</button>
+			<nav aria-label="Footer" class="flex flex-wrap gap-x-6 gap-y-2">
+				{
+					links.map(({ label, href, icon }) => (
+						<a href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noopener' : undefined}>
+							{icon && <Icon name={icon} class="w-4 h-4" />}
+							{label}
+						</a>
+					))
+				}
+			</nav>
 		</div>
 	</div>
 </footer>
+
+<style>
+	.pixel-footer {
+		/* the bar continues the underground, so the scene sits on it like a cross-section */
+		--under: #262220;
+		--ink: #a8a29e;
+		--ink-hi: #fafaf9;
+		--accent: #60a5fa;
+		margin-top: 6rem;
+	}
+	@media (prefers-color-scheme: dark) {
+		.pixel-footer {
+			--under: #141316;
+			--ink: #8b8a93;
+			--ink-hi: #ffffff;
+		}
+	}
+	/* --s is the pixel scale; the script reads it, so the layout never waits on JS */
+	.scene {
+		--s: 2;
+		position: relative;
+		height: calc(112px * var(--s));
+		overflow: hidden;
+	}
+	@media (min-width: 1440px) {
+		.scene { --s: 3; }
+	}
+	@media (min-width: 1920px) {
+		.scene { --s: 4; }
+	}
+	@media (min-width: 2400px) {
+		.scene { --s: 5; }
+	}
+	canvas {
+		position: absolute;
+		left: 50%;
+		top: 0;
+		transform: translateX(-50%);
+		image-rendering: pixelated;
+	}
+	/* the Stop label and the help line say the scene has focus */
+	canvas:focus { outline: none; }
+	.help,
+	.pads { display: none; }
+	.playing .help {
+		display: block;
+		position: absolute;
+		inset: 0.75rem 2rem auto;
+		pointer-events: none;
+		text-align: center;
+		text-wrap: balance;
+		font-size: 0.75rem;
+		line-height: 1.5;
+		color: #52525b;
+	}
+	/* in flight the controls leave the footer and stay with the window; above the sky layer (45) */
+	.playing .help.fly,
+	.flying .help.walk { display: none; }
+	.flying .help.fly {
+		display: block;
+		position: fixed;
+		inset: auto auto 1rem 50%;
+		z-index: 50;
+		width: max-content;
+		max-width: calc(100vw - 2rem);
+		transform: translateX(-50%);
+		padding: 0.5rem 0.75rem;
+		background: #fff;
+		border: 1px solid #d4d4d8;
+	}
+	@media (prefers-color-scheme: dark) {
+		.playing .help { color: #d4d4d8; }
+		.flying .help.fly {
+			background: #18181b;
+			border-color: #3f3f46;
+		}
+	}
+	@media (pointer: coarse) {
+		.playing .help,
+		.flying .help.fly { display: none; }
+		.playing + .pads {
+			display: flex;
+			gap: 0.75rem;
+			padding: 0.5rem 1rem;
+			background: var(--under);
+		}
+		.pads button {
+			display: grid;
+			place-items: center;
+			width: 3.25rem;
+			height: 3.25rem;
+			color: #fff;
+			background: rgb(255 255 255 / 0.06);
+			border: 1px solid #71717a;
+			touch-action: none;
+			user-select: none;
+			-webkit-user-select: none;
+		}
+		.flying + .pads {
+			position: fixed;
+			inset: auto 0 0;
+			z-index: 50;
+			background: rgb(24 24 27 / 0.9);
+		}
+		/* display none would shift Jump, so the spare button only hides */
+		.pads .exit,
+		.flying + .pads .board { display: none; }
+		.flying + .pads .exit { display: grid; }
+		.scene:not(.near) + .pads .board { visibility: hidden; }
+		.pads button:active { border-color: var(--accent); }
+	}
+	.bar {
+		background: var(--under);
+		color: var(--ink);
+		font-size: 0.8125rem;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+	}
+	.bar a,
+	.launch {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		min-height: 2rem;
+		transition: color 150ms var(--ease-out);
+	}
+	.bar a:hover,
+	.launch:hover:not(:disabled) {
+		color: var(--ink-hi);
+	}
+	.bar a:focus-visible,
+	.launch:focus-visible {
+		outline: 2px solid var(--accent);
+		outline-offset: 2px;
+	}
+	.launch {
+		color: var(--accent);
+		cursor: pointer;
+		font-variant-numeric: tabular-nums;
+	}
+	.launch:disabled {
+		cursor: default;
+	}
+</style>
+
+<script>
+	import { mountPixelFooter } from '../lib/pixelFooter';
+
+	mountPixelFooter(
+		document.getElementById('pf-scene')!,
+		document.getElementById('pf-canvas') as HTMLCanvasElement,
+		document.getElementById('pf-launch') as HTMLButtonElement,
+		document.getElementById('pf-play') as HTMLButtonElement,
+	);
+</script>
