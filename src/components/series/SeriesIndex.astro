@@ -1,59 +1,70 @@
 ---
-import { type SeriesNode, isGroup } from '../../lib/series';
+import { type SeriesNode, isGroup, seriesMeta } from '../../lib/series';
+import { excerpt } from '../../lib/excerpt';
 import { readingTime } from '../../lib/reading-time';
 
 interface Props {
-	// The page whose children are listed. Groups become labelled blocks,
-	// deeper groups become indented runs inside their block.
+	// The page whose children are listed. Groups put their heading beside their
+	// chapters, deeper groups become indented runs inside the chapter column.
 	node: SeriesNode;
 	nested?: boolean;
 }
 
 const { node, nested = false } = Astro.props;
-// Groups have no page, so their row is an <a> without href (not a link).
-const href = (n: SeriesNode) => (isGroup(n) ? undefined : `/projects/${n.entry.id}`);
+const preview = (n: SeriesNode) => excerpt(n.entry.body ?? '');
+
+const meta = 'text-xs tabular-nums text-zinc-500 dark:text-zinc-400';
+const rowGrid = 'grid grid-cols-[minmax(2.5rem,max-content)_minmax(0,1fr)_auto] items-baseline gap-x-3 py-5 lg:px-4';
+const rowText = 'col-start-2 col-span-2 mt-2 max-w-[72ch] text-sm leading-6 text-zinc-600 dark:text-zinc-400';
 ---
 
 {
 	node.children.map((child) =>
-		child.children.length > 0 && !nested ? (
-			<li class="relative mt-10 border border-zinc-300 dark:border-zinc-700 pt-5">
-				<h2 class="absolute -top-3 left-3 px-2 bg-white dark:bg-zinc-900 text-sm text-zinc-500 dark:text-zinc-400">
-					<span class="tabular-nums">{child.number}</span>
-					<span class="ml-2 uppercase tracking-wide">{child.entry.data.title}</span>
-				</h2>
-				<p class="px-4 pb-4 text-sm text-zinc-500 dark:text-zinc-400">{child.entry.data.description}</p>
-				<ol class="border-t border-zinc-300 dark:border-zinc-700">
+		isGroup(child) && !nested ? (
+			<li class="mt-12 border-t border-zinc-300 dark:border-zinc-700 lg:grid lg:grid-cols-[20rem_minmax(0,1fr)] lg:gap-x-12">
+				<div class="py-5 lg:sticky lg:top-20 lg:self-start">
+					<h2 class="text-lg font-semibold text-balance dark:text-white">
+						<span class="mr-3 font-normal tabular-nums text-zinc-500 dark:text-zinc-400">{child.number}</span>
+						{child.entry.data.title}
+					</h2>
+					<p class="mt-3 max-w-[65ch] text-sm leading-6 text-zinc-600 dark:text-zinc-400">{child.entry.data.description}</p>
+					<p class:list={['mt-3', meta]}>{seriesMeta(child)}</p>
+				</div>
+				<ol>
+					<Astro.self node={child} nested />
+				</ol>
+			</li>
+		) : isGroup(child) ? (
+			<li class="border-t border-zinc-300 dark:border-zinc-700 lg:first:border-t-0">
+				<div class={rowGrid}>
+					<span class="tabular-nums text-zinc-500 dark:text-zinc-400">{child.number}</span>
+					<h3 class="font-semibold dark:text-white">{child.entry.data.title}</h3>
+					<span class={meta}>{seriesMeta(child)}</span>
+					<p class={rowText}>{child.entry.data.description}</p>
+				</div>
+				<ol class="ml-4 pl-4 border-l border-zinc-300 dark:border-zinc-700 lg:ml-12 lg:pl-0">
 					<Astro.self node={child} nested />
 				</ol>
 			</li>
 		) : (
-			<li class="border-t border-zinc-300 dark:border-zinc-700 first:border-t-0">
-				<a
-					href={href(child)}
-					class:list={[
-						'group grid grid-cols-[3rem_minmax(0,1fr)] gap-x-2 px-4 py-4',
-						!isGroup(child) && 'hover:bg-zinc-100 dark:hover:bg-zinc-800 active:opacity-75 duration-100',
-					]}
-				>
-					<span class="tabular-nums text-zinc-400">{child.number}</span>
-					<span>
-						<span class="dark:text-white group-[[href]]:group-hover:text-blue-400 duration-200">
+			<li class="border-t border-zinc-300 dark:border-zinc-700 lg:first:border-t-0">
+				{/* The title link's ::after covers the row, so the whole row is clickable. */}
+				<div class:list={['group relative lg:hover:bg-zinc-100 dark:lg:hover:bg-zinc-800 active:opacity-75 duration-100', rowGrid]}>
+					<span class="tabular-nums text-zinc-500 dark:text-zinc-400">{child.number}</span>
+					<h3 class="font-medium dark:text-white">
+						<a
+							href={`/projects/${child.entry.id}`}
+							class="group-hover:text-blue-600 dark:group-hover:text-blue-400 duration-200 outline-none after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:outline-blue-500"
+						>
 							{child.entry.data.title}
-						</span>
-						<span class="block mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-							{child.entry.data.description}
-						</span>
-						{!isGroup(child) && (
-							<span class="block mt-2 text-xs text-zinc-400">{readingTime(child.entry.body ?? '')}</span>
-						)}
-					</span>
-				</a>
-				{child.children.length > 0 && (
-					<ol class="ml-[4.5rem] border-l border-zinc-300 dark:border-zinc-700">
-						<Astro.self node={child} nested />
-					</ol>
-				)}
+						</a>
+					</h3>
+					<span class={meta}>{readingTime(child.entry.body ?? '')}</span>
+					<p class={rowText}>
+						{/* The no-break space keeps "Read more" on the same line as the last word. */}
+						{preview(child) ? `${preview(child)}…` : child.entry.data.description}&nbsp;<span aria-hidden="true" class="whitespace-nowrap text-blue-600 dark:text-blue-400 underline-offset-4 group-hover:underline">Read more</span>
+					</p>
+				</div>
 			</li>
 		),
 	)
