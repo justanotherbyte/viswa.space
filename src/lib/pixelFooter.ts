@@ -3,7 +3,7 @@
 // CSS scales up with crisp pixels. Light mode is afternoon, dark mode is night. An astronaut can be played through all of it,
 // and can board the rocket to fly it over the rest of the page.
 
-import { fly, type Ship } from './flight';
+import { CATCH, climb, CUTOFF, drop, FLIP, fly, IGNITION, newDrop, RELEASE, returnPath, type Drop, type Ship } from './flight';
 import { carry, newBody, step, type Input, type Platform, type Wall } from './parkour';
 
 export const W = 480; // world width the landmarks are laid out in; wider screens get more city and desert at the edges
@@ -781,6 +781,91 @@ function puff(p: Pen, list: Particle[], dt: number, floor: number, smoke: string
 	}
 }
 
+// the exhaust: bright shock diamonds down the core, and what would go into the ground spreads along it instead
+function plume(p: Pen, flame: string[], x: number, y: number, nx: number, ny: number, len: number, floor: number) {
+	let blocked = 0;
+	for (let i = 0; i < len; i++) {
+		const w = Math.max(1, Math.round(4 - (i / len) * 3.2)), py = Math.round(y - ny * i - w / 2);
+		if (py >= floor) {
+			blocked++;
+			continue;
+		}
+		p.rect(Math.round(x - nx * i - w / 2), py, w, Math.min(w, floor - py), i < 3 ? flame[0] : i < len * 0.6 ? flame[1] : flame[2]);
+		if (i % 4 === 3 && i < len * 0.7) p.px(Math.round(x - nx * i - 0.5), py, flame[0]);
+	}
+	if (!blocked) return;
+	const cx = Math.round(x - 0.5), top = Math.round(floor) - 1;
+	p.rect(cx - blocked, top, blocked * 2 + 1, 1, flame[2]);
+	p.rect(cx - (blocked >> 1), top, (blocked >> 1) * 2 + 1, 1, flame[0]);
+}
+
+// the belly flop: heat along the underside and air streaming up past both sides
+function airRush(p: Pen, P: Pal, x: number, y: number, nx: number, ny: number, flop: number, streak: string) {
+	for (let i = -20; i <= 20; i++) {
+		const bx = Math.round(x + nx * i), by = Math.round(y + ny * i), h = Math.random();
+		if (h < flop * 0.9) p.px(bx, by + 4, h < 0.3 ? P.flame[0] : P.flame[1]);
+		if (h < flop * 0.5) p.px(bx, by + 5, P.flame[2]);
+		if ((i + 20) % 8 === 4 && h < flop * 0.8) p.rect(bx, by - 8 - Math.floor(h * 14), 1, 4 + Math.floor(h * 9), streak);
+	}
+}
+
+// the tower's catching arms, seen from the side: each swings in a flat circle round the tower, one in front of the rocket
+// and one behind, so an open pair shows as a splay. Angle 0 points away from the rocket, half a turn is closed on it.
+const ARM_REST = 0.6, ARM_OPEN = 2.5, ARM_Y = 38, CATCH_LIFT = 14;
+function towerArm(p: Pen, P: Pal, y: number, angle: number, side: number) {
+	const dx = Math.round(Math.cos(angle) * 15), dy = Math.round(Math.sin(angle) * 6 * side), n = Math.max(Math.abs(dx), Math.abs(dy));
+	for (let i = 0; i <= n; i++) {
+		const x = 399 + Math.round((dx * i) / n), ay = y + Math.round((dy * i) / n);
+		p.px(x, ay, P.planeShade);
+		p.px(x, ay + 1, i % 3 ? P.metalDark : P.planeShade);
+	}
+}
+// where the arms are, in seconds since bailing out: they open, close on the rocket, set it down and swing away again
+const RETURN_END = CATCH + 4;
+function armPose(t: number) {
+	const ease = (a: number, b: number) => {
+		const u = ramp(t, a, b);
+		return u * u * (3 - 2 * u);
+	};
+	const lowered = ease(CATCH + 0.6, CATCH + 2.2), bump = t > CATCH && t < CATCH + 0.12 ? 1 : 0;
+	const angle = ARM_REST + (ARM_OPEN - ARM_REST) * ease(FLIP - 0.4, FLIP + 1) + (Math.PI - ARM_OPEN) * ease(CATCH - 0.4, CATCH) - (Math.PI - ARM_REST) * ease(CATCH + 2.4, CATCH + 3.6);
+	return { angle, lift: CATCH_LIFT * (1 - lowered) - bump, y: ARM_Y + bump + Math.round(CATCH_LIFT * (lowered - ease(CATCH + 2.8, RETURN_END))) };
+}
+
+// a striped canopy over the astronaut's head; spread runs from 0 packed to 1 full, and sag drops it once they land
+function drawCanopy(p: Pen, P: Pal, x: number, y: number, spread: number, sag: number, outline: string) {
+	const hw = Math.max(1, Math.round(11 * spread)), h = Math.max(1, Math.round(8 * spread * (1 - sag))), top = y - 30 + Math.round(sag * 26);
+	for (let dx = -hw; dx <= hw; dx++) {
+		const rise = Math.round(h * Math.sqrt(1 - (dx / (hw + 0.5)) ** 2)), seam = Math.floor((dx + 22 + 2) / 5) % 2;
+		p.rect(x + dx, top + 7 - rise, 1, 1, outline);
+		p.rect(x + dx, top + 8 - rise, 1, rise, seam ? P.accent : '#f4f6fb');
+		if (Math.abs(dx) === hw) p.rect(x + dx + Math.sign(dx), top + 8 - rise, 1, rise, outline);
+		if (dx % 5 === 0) p.px(x + dx, top + 8, outline);
+	}
+	if (sag) return;
+	// lines down to the shoulders
+	for (const side of [-1, 1])
+		for (let i = 0; i < 12; i++) p.px(Math.round(x + side * (hw + (2 - hw) * (i / 11))), top + 9 + i, outline);
+}
+
+// firelight on the launch site, dithered at four strengths, kept low by day; it stops short of the top of the scene, which has to meet the page
+const GLOW_W = 88, GLOW_H = 60;
+function glowSprites(color: string, night: boolean) {
+	const rx = night ? GLOW_W : 60, ry = night ? GLOW_H : 22;
+	return [1, 2, 3, 4].map((k) => {
+		const c = document.createElement('canvas');
+		c.width = GLOW_W * 2;
+		c.height = GLOW_H + 4;
+		const pen = new Pen(c.getContext('2d')!, 0);
+		for (let y = 0; y < c.height; y++)
+			for (let x = 0; x < c.width; x++) {
+				const d = Math.hypot((x - GLOW_W) / rx, (y - GLOW_H) / ry);
+				if (bayer(x, y) < (1 - d) * (0.4 + k * 0.2)) pen.px(x, y, color);
+			}
+		return c;
+	});
+}
+
 function drawPlane(p: Pen, P: Pal, x: number, y: number, t: number, night: boolean) {
 	p.rect(x + 1, y - 1, 4, 1, P.planeShade);
 	p.rect(x + 1, y - 2, 3, 1, P.plane);
@@ -875,11 +960,17 @@ export function mountPixelFooter(scene: HTMLElement, canvas: HTMLCanvasElement, 
 	let left = 0, width = W, home = 0, camF = 0;
 	let level = buildLevel(0, W);
 	let playing = false, hoverAstro = false, near = false;
-	let ship: Ship | null = null, lastFly = 0;
+	let ship: Ship | null = null, lastFly = 0, liftoff = Infinity; // liftoff counts seconds since boarding
 	const sky = document.createElement('canvas'); // the layer the rocket flies on, over the whole page
 	sky.style.cssText = 'position:fixed;left:0;top:0;z-index:45;pointer-events:none;image-rendering:pixelated';
 	sky.setAttribute('aria-hidden', 'true');
 	const trail: Particle[] = [];
+	// after bailing out: the astronaut's fall, the canopy's spread and collapse, and the empty rocket flying home, in world space
+	let chute: (Drop & { t: number }) | null = null, landed = 9;
+	let booster: { from: Ship; ceiling: number; t: number } | null = null;
+	const dock = { x: ROCKET_X + 2.5, y: ROCKET_MID + 0.5 - CATCH_LIFT };
+	const flyingHome = () => booster && booster.t < CATCH ? returnPath(booster.from, dock, booster.ceiling, booster.t) : null;
+	let glows = glowSprites(P.flame[1], night), fire = 0; // how hard an engine on the pad lights it, 0 to 1
 	let rocketPx = rocketPixels(P), sprites: HTMLCanvasElement[] = [];
 	const body = newBody(328, GROUND);
 	const input: Input = { left: false, right: false, jump: false, down: false };
@@ -894,6 +985,7 @@ export function mountPixelFooter(scene: HTMLElement, canvas: HTMLCanvasElement, 
 		P = night ? NIGHT : DAY;
 		rocketPx = rocketPixels(P);
 		sprites = [];
+		glows = glowSprites(P.flame[1], night);
 		if (ship) leave(); // the scale may have changed under it
 		scale = parseInt(getComputedStyle(scene).getPropertyValue('--s')) || 2;
 		L = Math.ceil(scene.clientWidth / scale);
@@ -915,10 +1007,10 @@ export function mountPixelFooter(scene: HTMLElement, canvas: HTMLCanvasElement, 
 		frame(performance.now());
 	}
 
-	const rocketBox = (wx: number, wy: number) => !ship && wx >= ROCKET_X - 3 && wx <= ROCKET_X + 8 && wy >= ROCKET_TOP - 2 && wy <= GROUND;
+	const rocketBox = (wx: number, wy: number) => !ship && !booster && wx >= ROCKET_X - 3 && wx <= ROCKET_X + 8 && wy >= ROCKET_TOP - 2 && wy <= GROUND;
 
 	function launch() {
-		if (launchAt !== null || ship) return;
+		if (launchAt !== null || ship || booster) return;
 		launchAt = performance.now() / 1000;
 		button.disabled = true;
 		start();
@@ -942,28 +1034,60 @@ export function mountPixelFooter(scene: HTMLElement, canvas: HTMLCanvasElement, 
 		scene.classList.add('flying');
 		document.body.append(sky);
 		lastFly = 0;
-		for (let i = 0; i < 36; i++) spawn(ROCKET_X + 2, 86, (Math.random() - 0.5) * 70, -Math.random() * 5, 1.5, 2 + Math.random() * 2);
+		liftoff = still.matches ? Infinity : 0;
+		// frost shakes off the cold tank
+		for (let i = 0; i < 18; i++) {
+			const side = i % 2 ? 1 : -1;
+			spawn(ROCKET_X + 2 + side * 4, 50 + i * 1.7, side * (3 + Math.random() * 5), 12 + Math.random() * 14, 0.7, 0.9 + Math.random() * 0.7);
+		}
 		start();
 	}
 
-	// get out: in the scene the astronaut drops out where the rocket is, elsewhere they are put back on the pad
+	function disembark() {
+		ship = null;
+		trail.length = 0;
+		liftoff = Infinity;
+		scene.classList.remove('flying');
+		input.left = input.right = input.jump = input.down = false;
+	}
+
+	// stop flying at once: in the scene the astronaut drops out where the rocket is, elsewhere they are put back on the pad
 	function leave() {
 		if (!ship) return;
 		const o = origin(), wx = ship.x - o.x, wy = ship.y - o.y, here = wy > 0 && wx > left && wx < left + width;
 		Object.assign(body, newBody(here ? wx : ROCKET_X - 4, here ? wy : 86));
-		ship = null;
-		trail.length = 0;
+		disembark();
 		sky.remove();
-		scene.classList.remove('flying');
-		input.left = input.right = input.jump = input.down = false;
 		label.textContent = 'Restacking';
 		launchAt = performance.now() / 1000 - 11; // a fresh rocket is restacked on the pad
 		if (playing && !here) show();
 		start();
 	}
 
-	function flyFrame(now: number) {
+	// bail out: the astronaut parachutes down and the rocket flies itself back to the tower
+	function eject() {
 		if (!ship) return;
+		const o = origin(), wx = ship.x - o.x, wy = ship.y - o.y;
+		if (Math.abs(wx - dock.x) < 2 && wy > ROCKET_MID - 1 && Math.abs(Math.sin(ship.a / 2)) < 0.1) {
+			// still on the pad, so just climb down
+			Object.assign(body, newBody(ROCKET_X - 4, 86));
+			disembark();
+			sky.remove();
+			button.disabled = false;
+			label.textContent = 'Launch VEGA';
+			return;
+		}
+		booster = { from: { ...ship, x: wx, y: wy }, ceiling: 24 - o.y, t: 0 };
+		Object.assign(body, newBody(wx, wy));
+		chute = { ...newDrop(GROUND - wy), t: 0 };
+		disembark();
+		label.textContent = 'Returning';
+		start();
+	}
+
+	function flyFrame(now: number) {
+		const inbound = flyingHome();
+		if (!ship && !chute && !inbound) return sky.remove();
 		const dt = Math.min(0.05, lastFly ? (now - lastFly) / 1000 : 0);
 		lastFly = now;
 		const vw = document.documentElement.clientWidth, vh = innerHeight, w = Math.ceil(vw / scale), h = Math.ceil(vh / scale);
@@ -973,35 +1097,83 @@ export function mountPixelFooter(scene: HTMLElement, canvas: HTMLCanvasElement, 
 			sky.style.width = `${w * scale}px`;
 			sky.style.height = `${h * scale}px`;
 		}
-		const ground = origin().y;
-		fly(ship, input, dt, { x0: 6, x1: vw / scale - 6, y0: 24, y1: ground + ROCKET_MID + 0.5 });
+		const o = origin(), ground = o.y;
+		// the launch ignores held keys, as a walking key may still be down from boarding
+		const auto = liftoff < CUTOFF;
+		if (ship) {
+			if (auto) climb(ship, (liftoff += dt), dt);
+			else fly(ship, input, dt, { x0: 6, x1: vw / scale - 6, y0: 24, y1: ground + ROCKET_MID + 0.5 });
+		}
 
-		// scroll to keep the rocket in the middle fifth of the window
-		const y = ship.y * scale - scrollY, to = y < vh * 0.4 ? y - vh * 0.4 : y > vh * 0.6 ? y - vh * 0.6 : 0;
-		if (to) scrollTo({ top: scrollY + to, behavior: 'instant' });
+		// scroll to keep the player in the middle fifth of the window
+		if (ship || (chute && playing)) {
+			const y = (ship ? ship.y : o.y + body.y) * scale - scrollY, to = y < vh * 0.4 ? y - vh * 0.4 : y > vh * 0.6 ? y - vh * 0.6 : 0;
+			if (to) scrollTo({ top: scrollY + to, behavior: 'instant' });
+		}
 
 		const sx = Math.round(scrollX / scale), sy = Math.round(scrollY / scale), c = sky.getContext('2d')!;
 		c.setTransform(1, 0, 0, 1, 0, -sy);
 		c.clearRect(0, sy, w, h);
-		const p = new Pen(c, sx), nx = Math.sin(ship.a), ny = -Math.cos(ship.a);
+		const p = new Pen(c, sx);
 		puff(p, trail, dt, ground + GROUND, night ? P.smoke : ['#e5e8ec', '#c4c9d0', '#9aa1ab']);
-		if (input.jump) {
-			const len = 8 + Math.random() * 9;
-			for (let i = 0; i < len; i++) {
-				const fw = Math.max(1, Math.round(4 - (i / len) * 3.2)), d = 20 + i;
-				const col = i < 3 ? P.flame[0] : i < len * 0.6 ? P.flame[1] : P.flame[2];
-				p.rect(Math.round(ship.x - nx * d - fw / 2), Math.round(ship.y - ny * d - fw / 2), fw, fw, col);
+		const craft = ship ?? (inbound && { ...inbound, x: o.x + inbound.x, y: o.y + inbound.y, vx: 0, vy: 0 });
+		if (craft) {
+			const nx = Math.sin(craft.a), ny = -Math.cos(craft.a);
+			if (inbound ? inbound.burn : auto ? liftoff > IGNITION : input.jump) {
+				const power = auto ? ramp(liftoff, IGNITION, RELEASE) : 1;
+				plume(p, P.flame, craft.x - nx * 20, craft.y - ny * 20, nx, ny, 2 + power * (6 + Math.random() * 9), ground + 87);
+				// near the pad the scene's own smoke takes over
+				if (!auto && craft.y < ground + 20 && trail.length < 150)
+					trail.push({
+						x: craft.x - nx * 30, y: craft.y - ny * 30,
+						vx: craft.vx * 0.2 - nx * 30 + (Math.random() - 0.5) * 12, vy: craft.vy * 0.2 - ny * 30 + (Math.random() - 0.5) * 12,
+						r: 1.2, age: 0, life: 0.8 + Math.random() * 0.8,
+					});
 			}
-			if (trail.length < 150)
-				trail.push({
-					x: ship.x - nx * 30, y: ship.y - ny * 30,
-					vx: ship.vx * 0.2 - nx * 30 + (Math.random() - 0.5) * 12, vy: ship.vy * 0.2 - ny * 30 + (Math.random() - 0.5) * 12,
-					r: 1.2, age: 0, life: 0.8 + Math.random() * 0.8,
-				});
+			if (inbound && inbound.flop) airRush(p, P, craft.x, craft.y, nx, ny, inbound.flop, night ? P.starDim : '#9aa1ab');
+			const k = ((Math.round((craft.a / (Math.PI * 2)) * HEADINGS) % HEADINGS) + HEADINGS) % HEADINGS;
+			sprites[k] ??= rocketSprite(rocketPx, k);
+			// it strains against the pad until that lets go
+			const tremble = liftoff < RELEASE && liftoff > IGNITION ? Math.floor(now / 40) % 2 : 0;
+			c.drawImage(sprites[k], Math.floor(craft.x) - sx - SPRITE + tremble, Math.floor(craft.y) - SPRITE);
 		}
-		const k = ((Math.round((ship.a / (Math.PI * 2)) * HEADINGS) % HEADINGS) + HEADINGS) % HEADINGS;
-		sprites[k] ??= rocketSprite(rocketPx, k);
-		c.drawImage(sprites[k], Math.floor(ship.x) - sx - SPRITE, Math.floor(ship.y) - SPRITE);
+
+		// from here in world space: the near arm passes in front of the rocket, and the astronaut under the canopy
+		c.setTransform(1, 0, 0, 1, 0, Math.round(o.y) - sy);
+		const q = new Pen(c, sx - Math.round(o.x));
+		if (inbound) {
+			const arms = armPose(booster!.t);
+			towerArm(q, P, arms.y, arms.angle, 1);
+		}
+		if (chute) {
+			const ax = Math.round(body.x), ay = Math.round(body.y);
+			if (chute.open) drawCanopy(q, P, ax + Math.round(Math.sin(chute.t * 2.2) * 1.4), ay, ramp(chute.t, 0, 0.45), 0, '#0b0b10');
+			drawAstronaut(q, ax, ay, body.face, 'air', false, '#0b0b10');
+		}
+	}
+
+	// one step of the fall: straight down until the canopy has slowed it, then the usual movement, so roofs can be landed on
+	function glide(d: NonNullable<typeof chute>, dt: number, plats: Platform[]) {
+		drop(d, GROUND - body.y, dt);
+		if (d.open) d.t += dt;
+		const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+		// left alone, they drift clear of the pad the rocket is coming down on
+		const off = body.x - dock.x;
+		if (!dir && Math.abs(off) < 40) body.x += (off > 8 ? 18 : -18) * dt;
+		if (!d.open || d.vy > 120) {
+			if (dir) body.face = dir;
+			body.x += dir * 45 * dt;
+			body.y = Math.min(GROUND - 1, body.y + d.vy * dt);
+			return;
+		}
+		body.vy = d.vy;
+		step(body, { ...input, jump: false, down: false }, dt, plats, level.walls);
+		body.vx = Math.max(-45, Math.min(45, body.vx));
+		if (!body.ground) return;
+		body.held = input.jump; // a key held from the fall is not a jump
+		chute = null;
+		landed = 0;
+		if (playing) show();
 	}
 
 	function frame(now: number) {
@@ -1018,6 +1190,15 @@ export function mountPixelFooter(scene: HTMLElement, canvas: HTMLCanvasElement, 
 			lift = 0;
 			shown = Math.min(1, (rel - 11) / 1.6);
 		}
+		if (booster && (booster.t += dt) > RETURN_END) {
+			booster = null;
+			button.disabled = false;
+			label.textContent = 'Launch VEGA';
+		}
+		const inbound = flyingHome(), gone = ship || inbound, arms = armPose(booster ? booster.t : 0);
+		if (booster && !inbound) lift = arms.lift;
+		const heat = inbound ? (inbound.burn ? ramp(dock.y - inbound.y, 60, 0) : 0) : ship ? (liftoff < CUTOFF ? ramp(liftoff, IGNITION, RELEASE) : 0) : rel < 11 ? ramp(rel, 1.5, 2.4) * ramp(lift, 70, 0) : 0;
+		fire += (heat - fire) * Math.min(1, dt * 8);
 		const busX = 146 - (t % 30) * 9, autoX = 132 + (t % 19) * 11, planeX = left - 40 + (t % 46) * 13;
 		const cloudX = CLOUDS.map((c) => left - 60 + ((((c.x - left + 60 + t * c.v) % (width + 120)) + width + 120) % (width + 120)));
 		const plats: Platform[] = [
@@ -1027,17 +1208,22 @@ export function mountPixelFooter(scene: HTMLElement, canvas: HTMLCanvasElement, 
 			{ x: planeX + 7, y: 21, w: 13, key: 'plane' },
 			...CLOUD_TOPS.map((c, i) => ({ x: cloudX[i] + c.a, y: c.y, w: c.w, key: `cloud${i}` })),
 		];
-		if (lift < 160 && shown === 1 && !ship) plats.push({ x: ROCKET_X, y: 46 - lift, w: 5, key: 'rocket' });
+		if (lift < 160 && shown === 1 && !gone) plats.push({ x: ROCKET_X, y: 46 - lift, w: 5, key: 'rocket' });
 		if (!ship) {
 			carry(body, plats);
 			const subs = Math.ceil(dt * 120);
 			for (let i = 0; i < subs; i++) {
+				if (chute) {
+					glide(chute, dt / subs, plats);
+					continue;
+				}
 				step(body, input, dt / subs, plats, level.walls);
 				if (body.boosted) for (let k = 0; k < 4; k++) spawn(body.x - 2 * body.face, body.y - 2, (Math.random() - 0.5) * 16, 14 + Math.random() * 14, 0.8, 0.7);
 			}
 			body.x = Math.max(left + 6, Math.min(left + width - 6, body.x));
 		}
-		const canBoard = playing && !ship && rel < 0 && Math.abs(body.x - ROCKET_X - 2) < 14;
+		landed += dt;
+		const canBoard = playing && !ship && !booster && rel < 0 && Math.abs(body.x - ROCKET_X - 2) < 14;
 		if (canBoard !== near) scene.classList.toggle('near', (near = canBoard));
 		const aim = ship ? camF : playing ? Math.max(left, Math.min(left + width - L, body.x - L / 2)) : home;
 		camF += (aim - camF) * (still.matches ? 1 : Math.min(1, dt * 8));
@@ -1105,8 +1291,12 @@ export function mountPixelFooter(scene: HTMLElement, canvas: HTMLCanvasElement, 
 		}
 
 		// the rocket: on the pad, counting down, flying, then restacked
-		const armsIn = !ship && (rel < 0 || rel < 1 || rel > 12.8);
-		for (const y of [55, 69]) p.rect(armsIn ? 393 : 396, y, armsIn ? 4 : 1, 1, P.metalDark);
+		p.rect(396, arms.y - 2, 7, 6, P.metalDark);
+		p.rect(396, arms.y - 2, 7, 1, P.planeShade);
+		towerArm(p, P, arms.y, arms.angle, -1);
+		const opening = ship ? liftoff : booster ? Infinity : rel > 12.8 ? 0 : rel - 1;
+		const arm = Math.min(4, Math.max(1, 4 - Math.floor(opening * 12)));
+		for (const y of [55, 69]) p.rect(397 - arm, y, arm, 1, P.metalDark);
 		const ry = (y: number) => Math.round(y - lift);
 		if (canBoard || (rel < 0 && hover && !ship)) {
 			// a 1px selection outline in the site's accent, to say the rocket is clickable or can be boarded
@@ -1118,19 +1308,17 @@ export function mountPixelFooter(scene: HTMLElement, canvas: HTMLCanvasElement, 
 			for (const [fx, fy] of FINS) if (fx === -2 || fx === 6) p.px(ROCKET_X + fx + (fx < 0 ? -1 : 1), fy, P.accent);
 		}
 		const cut = NOZZLE - Math.round(shown * (NOZZLE - ROCKET_TOP + 1));
-		if (lift < 160 && !ship) for (const [x, y, c] of rocketPx) if (y > cut) p.px(x, ry(y), c);
+		if (lift < 160 && !gone) for (const [x, y, c] of rocketPx) if (y > cut) p.px(x, ry(y), c);
+		if (!inbound) towerArm(p, P, arms.y, arms.angle, 1);
 		if (rel >= 1.5 && rel < 11) {
 			const len = rel < 2.4 ? 2 + Math.random() * 3 : 6 + Math.random() * 7;
-			if (lift < 200)
-				for (let i = 0; i < len; i++) {
-					const w = Math.max(1, Math.round(3 - (i / len) * 2.4));
-					const c = i < 2 ? P.flame[0] : i < len * 0.6 ? P.flame[1] : P.flame[2];
-					p.rect(ROCKET_X + 2 - (w >> 1), ry(NOZZLE + 1 + i), w, 1, c);
-				}
-			if (rel < 3.2) for (let i = 0; i < 4; i++) spawn(ROCKET_X + 2 + (Math.random() - 0.5) * 6, 86, (Math.random() < 0.5 ? -1 : 1) * (16 + Math.random() * 34), -Math.random() * 6, 1.5 + Math.random() * 1.5, 4 + Math.random() * 3);
-			else if (lift < 140) for (let i = 0; i < 2; i++) spawn(ROCKET_X + 2 + (Math.random() - 0.5) * 2, NOZZLE + 4 - lift, (Math.random() - 0.5) * 5, 2 + Math.random() * 4, 1 + Math.random(), 3 + Math.random() * 2.5);
+			if (lift < 200) plume(p, P.flame, ROCKET_X + 2.5, ry(NOZZLE + 1), 0, -1, len, 87);
+			if (rel >= 3.2 && lift < 140) for (let i = 0; i < 2; i++) spawn(ROCKET_X + 2 + (Math.random() - 0.5) * 2, NOZZLE + 4 - lift, (Math.random() - 0.5) * 5, 2 + Math.random() * 4, 1 + Math.random(), 3 + Math.random() * 2.5);
 		}
-		if (rel < 0 && !ship && !still.matches && t > nextVent) {
+		if (inbound ? dock.y - inbound.y < 30 : ship ? liftoff > IGNITION && liftoff < CUTOFF - 0.7 : rel >= 1.5 && rel < 3.2) {
+			for (let i = 0; i < 4; i++) spawn(ROCKET_X + 2 + (Math.random() - 0.5) * 6, 86, (Math.random() < 0.5 ? -1 : 1) * (16 + Math.random() * 34), -Math.random() * 6, 1.5 + Math.random() * 1.5, 4 + Math.random() * 3);
+		}
+		if (rel < 0 && !ship && !booster && !still.matches && t > nextVent) {
 			nextVent = t + 1.4 + Math.random();
 			spawn(ROCKET_X + 5, 53, 4 + Math.random() * 3, -2, 0.8, 2.2);
 		}
@@ -1140,13 +1328,24 @@ export function mountPixelFooter(scene: HTMLElement, canvas: HTMLCanvasElement, 
 
 		g.drawImage(front, left - cam, 0);
 
+		// firelight over the smoke and the site, and a one-pixel rumble
+		const beat = Math.floor(clock * 12);
+		const glow = glows[Math.min(3, Math.floor(fire * 4 - (still.matches ? 0 : hash(beat))))];
+		if (glow) {
+			g.globalAlpha = night ? 0.3 : 0.4;
+			g.drawImage(glow, ROCKET_X + 2 - GLOW_W - cam, GROUND - GLOW_H);
+			g.globalAlpha = 1;
+		}
+		if (!still.matches && hash(beat * 1.7) < fire * 0.9) g.drawImage(canvas, hash(beat * 2.3) < 0.5 ? -1 : 1, hash(beat * 3.1) < 0.5 ? -1 : 1);
+
 		if (near) {
 			p.rect(ROCKET_X - 1, 33, 7, 9, '#0b0b10');
 			p.rect(ROCKET_X, 34, 5, 7, P.accent);
 			p.text('E', ROCKET_X + 1, 35, '#0b0b10');
 		}
 
-		if (!ship) {
+		if (landed < 0.7) drawCanopy(p, P, Math.round(body.x - 4 * body.face), Math.round(body.y), 1 - landed * 0.4, ramp(landed, 0, 0.6), '#0b0b10');
+		if (!ship && !chute) {
 			const ax = Math.round(body.x), ay = Math.round(body.y);
 			const pose = body.wall ? 'cling' : !body.ground ? 'air' : Math.abs(body.vx) < 8 ? 'idle' : Math.floor(clock * 9) % 2 ? 'runA' : 'runB';
 			const wave = !playing && !still.matches && pose === 'idle' && t % 5 < 1.2 && t % 0.4 < 0.2;
@@ -1167,16 +1366,17 @@ export function mountPixelFooter(scene: HTMLElement, canvas: HTMLCanvasElement, 
 
 	function loop(now: number) {
 		raf = 0;
-		if (!visible && !ship) return;
+		const away = ship || chute || booster;
+		if (!visible && !away) return;
 		if (playing || now - last > 1000 / 24) {
 			last = now;
-			if (visible) frame(now);
+			if (visible || chute || booster) frame(now);
 			flyFrame(now);
 		}
-		if (!still.matches || playing || launchAt !== null || parts.length) raf = requestAnimationFrame(loop);
+		if (!still.matches || playing || away || launchAt !== null || parts.length) raf = requestAnimationFrame(loop);
 	}
 	function start() {
-		if (!raf && (visible || ship)) raf = requestAnimationFrame(loop);
+		if (!raf && (visible || ship || chute || booster)) raf = requestAnimationFrame(loop);
 	}
 
 	const world = (e: PointerEvent) => {
@@ -1186,14 +1386,14 @@ export function mountPixelFooter(scene: HTMLElement, canvas: HTMLCanvasElement, 
 	canvas.addEventListener('pointermove', (e) => {
 		const [x, y] = world(e);
 		hover = launchAt === null && rocketBox(x, y);
-		hoverAstro = !ship && astroBox(x, y);
+		hoverAstro = !ship && !chute && astroBox(x, y);
 		canvas.style.cursor = hover || hoverAstro ? 'pointer' : '';
 		if (still.matches && launchAt === null) frame(performance.now());
 	});
 	canvas.addEventListener('pointerleave', () => (hover = hoverAstro = false));
 	canvas.addEventListener('click', (e) => {
 		const [x, y] = world(e);
-		if (!ship && astroBox(x, y)) setPlaying(true);
+		if (!ship && !chute && astroBox(x, y)) setPlaying(true);
 		else if (rocketBox(x, y)) launch();
 	});
 	button.addEventListener('click', launch);
@@ -1218,10 +1418,12 @@ export function mountPixelFooter(scene: HTMLElement, canvas: HTMLCanvasElement, 
 		}
 	}
 	const hop = () => {
-		if (ship) leave();
+		if (ship) still.matches ? leave() : eject();
 		else if (near && launchAt === null) board();
 	};
 	for (const b of hops) b.addEventListener('click', hop);
+	// a fresh press after the pad lets go ends the automatic launch early
+	const takeOver = () => ship && liftoff > RELEASE && (liftoff = Infinity);
 	const KEYS: Record<string, keyof Input> = {
 		ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowDown: 'down', KeyS: 'down',
 		ArrowUp: 'jump', KeyW: 'jump', Space: 'jump',
@@ -1235,6 +1437,7 @@ export function mountPixelFooter(scene: HTMLElement, canvas: HTMLCanvasElement, 
 			if (!e.repeat) hop();
 		} else if (e.code === 'Enter') launch();
 		else if (KEYS[e.code]) {
+			if (!e.repeat) takeOver();
 			input[KEYS[e.code]] = true;
 			e.preventDefault(); // the page must not scroll
 		}
@@ -1246,6 +1449,7 @@ export function mountPixelFooter(scene: HTMLElement, canvas: HTMLCanvasElement, 
 		const key = pad.dataset.key as keyof Input;
 		pad.addEventListener('pointerdown', (e) => {
 			pad.setPointerCapture(e.pointerId);
+			takeOver();
 			input[key] = true;
 		});
 		for (const end of ['pointerup', 'pointercancel', 'lostpointercapture']) pad.addEventListener(end, () => (input[key] = false));
