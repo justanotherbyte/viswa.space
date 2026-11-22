@@ -63,30 +63,40 @@ export function drop(d: Drop, height: number, dt: number) {
 	}
 }
 
-// The empty rocket's way back: it falls to a point up and left of the tower, then burns, slides across and slows into
-// the arms. Seconds since bailing out.
-export const REENTRY = 2.2, CATCH = 5.6;
-const AWAY = 30, ABOVE = 205, ENTRY_SPEED = 110, CATCH_SPEED = 6;
+// The empty rocket's way back: it tips onto its side up and left of the tower, belly-flops down, flips upright on its
+// engine, then slides across and slows into the arms. Seconds since bailing out.
+export const REENTRY = 2, FLIP = 4.4, CATCH = 7.2;
+const HIGH = { away: 70, above: 255 }, LOW = { away: 32, above: 105 }, CATCH_SPEED = 6; // where the flop starts and ends
+const FLAT = -Math.PI / 2; // nose to the left, so the flip swings it up toward the tower
 
 const smooth = (u: number) => {
 	const c = Math.max(0, Math.min(1, u));
 	return c * c * (3 - 2 * c);
 };
-// a cubic from a to b with those end speeds, over T seconds: position and acceleration
+// a cubic from a to b with those end speeds, over T seconds: position, speed and acceleration
 function cubic(a: number, va: number, b: number, vb: number, T: number, t: number) {
 	const u = t / T, d = b - a, m = va * T, n = vb * T, k2 = 3 * d - 2 * m - n, k3 = m + n - 2 * d;
-	return [a + m * u + k2 * u * u + k3 * u ** 3, (2 * k2 + 6 * k3 * u) / T ** 2];
+	return [a + m * u + k2 * u * u + k3 * u ** 3, (m + 2 * k2 * u + 3 * k3 * u * u) / T, (2 * k2 + 6 * k3 * u) / T ** 2];
 }
 
-/** `ceiling` is the highest the rocket may be when it starts its landing burn, for short pages. */
+/** `ceiling` is the highest the rocket may fly, for short pages. `flop` is how hard the air hits its belly, 0 to 1. */
 export function returnPath(from: Ship, to: { x: number; y: number }, ceiling: number, t: number) {
-	const x = to.x - AWAY, y = Math.max(ceiling, to.y - ABOVE);
+	const T = FLIP - REENTRY, x0 = to.x - HIGH.away, x1 = to.x - LOW.away;
+	const y0 = Math.max(ceiling, to.y - HIGH.above), y1 = Math.max(ceiling, to.y - LOW.above);
+	const vx = (x1 - x0) / T, vy = (y1 - y0) / T;
 	if (t < REENTRY) {
-		const turn = Math.atan2(Math.sin(from.a), Math.cos(from.a)); // the short way back to upright
-		const [py, ay] = cubic(from.y, from.vy, y, ENTRY_SPEED, REENTRY, t);
-		return { x: cubic(from.x, from.vx, x, 0, REENTRY, t)[0], y: Math.max(ceiling, py), a: turn * (1 - smooth(t / REENTRY)), burn: ay < -30 };
+		const turn = Math.atan2(Math.sin(from.a - FLAT), Math.cos(from.a - FLAT)); // the short way round
+		const over = smooth((t / REENTRY - 0.25) / 0.65);
+		const [y, v, ay] = cubic(from.y, from.vy, y0, vy, REENTRY, t);
+		return { x: cubic(from.x, from.vx, x0, vx, REENTRY, t)[0], y: Math.max(ceiling, y), a: FLAT + turn * (1 - over), burn: v <= 0 && ay < 0, flop: v > 0 ? over : 0 };
 	}
-	const T = CATCH - REENTRY, u = Math.min(1, (t - REENTRY) / T), slide = (u - 0.35) / 0.6;
-	const lean = slide > 0 && slide < 1 ? 0.3 * Math.sin(slide * Math.PI * 2) : 0;
-	return { x: x + AWAY * smooth(slide), y: cubic(y, ENTRY_SPEED, to.y, CATCH_SPEED, T, u * T)[0], a: lean, burn: u < 1 };
+	if (t < FLIP) {
+		const u = (t - REENTRY) / T; // it rocks on the air as it falls
+		return { x: x0 + (x1 - x0) * u, y: y0 + (y1 - y0) * u, a: FLAT + 0.22 * Math.sin(u * Math.PI * 6), burn: false, flop: 1 };
+	}
+	const R = CATCH - FLIP, u = Math.min(1, (t - FLIP) / R), slide = (u - 0.35) / 0.6;
+	const lean = slide > 0 && slide < 1 ? 0.3 * Math.sin(slide * Math.PI * 2) : 0, up = smooth(u / 0.35);
+	// what is left of the sideways drift dies out during the flip
+	const coast = vx * R * u * (1 - u) ** 3;
+	return { x: x1 + coast + LOW.away * smooth(slide), y: cubic(y1, vy, to.y, CATCH_SPEED, R, u * R)[0], a: FLAT * (1 - up) + lean, burn: u < 1, flop: 1 - smooth(u / 0.2) };
 }

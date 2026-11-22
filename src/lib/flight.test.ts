@@ -1,7 +1,7 @@
 // Run with: node --test src/lib/flight.test.ts
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { CATCH, climb, CUTOFF, DRIFT, drop, fly, newDrop, REENTRY, RELEASE, returnPath, type Ship } from './flight.ts';
+import { CATCH, climb, CUTOFF, DRIFT, drop, FLIP, fly, newDrop, REENTRY, RELEASE, returnPath, type Ship } from './flight.ts';
 
 const none = { left: false, right: false, jump: false, down: false };
 const box = { x0: 0, y0: 0, x1: 480, y1: 1000 };
@@ -53,12 +53,16 @@ test('the parachute opens in time from any height', () => {
 	}
 });
 
-test('the rocket comes back upright to the arms without a jump', () => {
+test('the rocket belly-flops, flips and comes back upright to the arms without a jump', () => {
 	for (const from of [{ x: 100, y: -1700, vx: 80, vy: -200, a: 9 }, { x: 390, y: -40, vx: 0, vy: -30, a: 0 }, { x: 20, y: 60, vx: -90, vy: 90, a: -3 }])
 		for (const ceiling of [-5000, -90]) {
 			const to = { x: 390, y: 50 }, at = (t: number) => returnPath(from, to, ceiling, t);
-			const a = at(REENTRY - 1e-6), b = at(REENTRY), end = at(CATCH);
-			assert.ok(Math.hypot(a.x - b.x, a.y - b.y, a.a - b.a) < 0.01);
+			for (const t of [REENTRY, FLIP]) {
+				const a = at(t - 1e-6), b = at(t);
+				assert.ok(Math.hypot(a.x - b.x, a.y - b.y, a.a - b.a) < 0.01);
+			}
+			const end = at(CATCH), flop = at((REENTRY + FLIP) / 2);
+			assert.ok(Math.abs(Math.sin(flop.a)) > 0.97 && !flop.burn);
 			assert.ok(Math.hypot(end.x - to.x, end.y - to.y, end.a) < 0.01);
 			for (let t = REENTRY; t < CATCH; t += 0.05) assert.ok(at(t).y >= ceiling && at(t).y <= to.y + 0.01);
 		}

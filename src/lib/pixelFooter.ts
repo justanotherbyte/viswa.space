@@ -3,7 +3,7 @@
 // CSS scales up with crisp pixels. Light mode is afternoon, dark mode is night. An astronaut can be played through all of it,
 // and can board the rocket to fly it over the rest of the page.
 
-import { CATCH, climb, CUTOFF, drop, fly, IGNITION, newDrop, REENTRY, RELEASE, returnPath, type Drop, type Ship } from './flight';
+import { CATCH, climb, CUTOFF, drop, FLIP, fly, IGNITION, newDrop, RELEASE, returnPath, type Drop, type Ship } from './flight';
 import { carry, newBody, step, type Input, type Platform, type Wall } from './parkour';
 
 export const W = 480; // world width the landmarks are laid out in; wider screens get more city and desert at the edges
@@ -799,6 +799,16 @@ function plume(p: Pen, flame: string[], x: number, y: number, nx: number, ny: nu
 	p.rect(cx - (blocked >> 1), top, (blocked >> 1) * 2 + 1, 1, flame[0]);
 }
 
+// the belly flop: heat along the underside and air streaming up past both sides
+function airRush(p: Pen, P: Pal, x: number, y: number, nx: number, ny: number, flop: number, streak: string) {
+	for (let i = -20; i <= 20; i++) {
+		const bx = Math.round(x + nx * i), by = Math.round(y + ny * i), h = Math.random();
+		if (h < flop * 0.9) p.px(bx, by + 4, h < 0.3 ? P.flame[0] : P.flame[1]);
+		if (h < flop * 0.5) p.px(bx, by + 5, P.flame[2]);
+		if ((i + 20) % 8 === 4 && h < flop * 0.8) p.rect(bx, by - 8 - Math.floor(h * 14), 1, 4 + Math.floor(h * 9), streak);
+	}
+}
+
 // the tower's catching arms, seen from the side: each swings in a flat circle round the tower, one in front of the rocket
 // and one behind, so an open pair shows as a splay. Angle 0 points away from the rocket, half a turn is closed on it.
 const ARM_REST = 0.6, ARM_OPEN = 2.5, ARM_Y = 38, CATCH_LIFT = 14;
@@ -818,7 +828,7 @@ function armPose(t: number) {
 		return u * u * (3 - 2 * u);
 	};
 	const lowered = ease(CATCH + 0.6, CATCH + 2.2), bump = t > CATCH && t < CATCH + 0.12 ? 1 : 0;
-	const angle = ARM_REST + (ARM_OPEN - ARM_REST) * ease(REENTRY, REENTRY + 1.4) + (Math.PI - ARM_OPEN) * ease(CATCH - 0.4, CATCH) - (Math.PI - ARM_REST) * ease(CATCH + 2.4, CATCH + 3.6);
+	const angle = ARM_REST + (ARM_OPEN - ARM_REST) * ease(FLIP - 0.4, FLIP + 1) + (Math.PI - ARM_OPEN) * ease(CATCH - 0.4, CATCH) - (Math.PI - ARM_REST) * ease(CATCH + 2.4, CATCH + 3.6);
 	return { angle, lift: CATCH_LIFT * (1 - lowered) - bump, y: ARM_Y + bump + Math.round(CATCH_LIFT * (lowered - ease(CATCH + 2.8, RETURN_END))) };
 }
 
@@ -1120,6 +1130,7 @@ export function mountPixelFooter(scene: HTMLElement, canvas: HTMLCanvasElement, 
 						r: 1.2, age: 0, life: 0.8 + Math.random() * 0.8,
 					});
 			}
+			if (inbound && inbound.flop) airRush(p, P, craft.x, craft.y, nx, ny, inbound.flop, night ? P.starDim : '#9aa1ab');
 			const k = ((Math.round((craft.a / (Math.PI * 2)) * HEADINGS) % HEADINGS) + HEADINGS) % HEADINGS;
 			sprites[k] ??= rocketSprite(rocketPx, k);
 			// it strains against the pad until that lets go
