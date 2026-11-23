@@ -27,9 +27,9 @@ const projects = defineCollection({
 	schema: ({ image }) =>
 		z.object({
 			title: z.string(),
-			description: z.string(),
 			// Required on top-level projects. Chapters of a series (nested files,
-			// see src/lib/series.ts) may leave date and image out.
+			// see src/lib/series.ts) may leave description, date and image out.
+			description: z.string().optional(),
 			date: z.coerce.date().optional(),
 			// Position among siblings in a series folder, ascending.
 			order: z.number().default(0),

@@ -54,9 +54,9 @@ export async function topLevelProjects() {
 	return all
 		.filter((p) => !p.id.includes('/'))
 		.map((p) => {
-			const { date, image } = p.data;
-			if (!date || !image) throw new Error(`Project "${p.id}" needs a date and an image`);
-			return { ...p, data: { ...p.data, date, image }, meta: seriesMeta(seriesTree(all, p.id)) };
+			const { description, date, image } = p.data;
+			if (!description || !date || !image) throw new Error(`Project "${p.id}" needs a description, a date and an image`);
+			return { ...p, data: { ...p.data, description, date, image }, meta: seriesMeta(seriesTree(all, p.id)) };
 		})
 		.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
 }

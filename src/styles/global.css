@@ -10,6 +10,18 @@ body {
 	font-family: var(--font-jetbrains), monospace;
 }
 
+/* A markdown image's figure shrinks to the image and centers. contain keeps a long
+   caption from widening it, so the caption wraps at the image's edges. */
+.img-figure {
+	width: fit-content;
+	max-width: 100%;
+	margin: 1.5rem auto;
+}
+
+.img-figure > figcaption {
+	contain: inline-size;
+}
+
 html {
 	scroll-behavior: smooth;
 }

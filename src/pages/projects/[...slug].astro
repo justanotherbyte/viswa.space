@@ -5,6 +5,7 @@ import SiteLayout from "../../layouts/SiteLayout.astro";
 import FormattedDate from "../../components/FormattedDate.astro";
 import TableOfContents from "../../components/TableOfContents.astro";
 import { readingTime } from "../../lib/reading-time";
+import { excerpt } from "../../lib/excerpt";
 import { tocHeadings } from "../../lib/toc";
 import { lastCommitDate } from "../../lib/last-commit";
 import { SITE_TITLE } from "../../consts";
@@ -68,7 +69,7 @@ const heroClass = `w-full max-h-96 ${fitClass} ${positionClass} rounded-sm mb-4`
 
 <SiteLayout
 	title={`${title} | ${SITE_TITLE}`}
-	description={description}
+	description={description ?? excerpt(project.body ?? "")}
 >
 	<link
 		rel="stylesheet"
