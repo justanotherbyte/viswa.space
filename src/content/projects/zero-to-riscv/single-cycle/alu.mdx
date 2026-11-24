@@ -1,0 +1,186 @@
+---
+title: "ALU and more"
+order: 6
+---
+
+import ZoomImage from '../../../../components/ZoomImage.astro';
+import CodePair from '../../../../components/CodePair.astro';
+import CodeTab from '../../../../components/CodeTab.astro';
+import OneCycle from '../../../../components/riscv/OneCycle.astro';
+import aluSchematic from '../../../../assets/articles/zero-to-riscv/alu-schematic.png';
+
+To perform the arithmetic operations we need to calculate an `addr + offset`: we need an Arithmetic Logic Unit (ALU). Before that, note that our `imm` is stored
+in bits `[31:20]` - it's a 12-bit immediate value. To calculate our `addr + offset`, we need to sign extend this value to 32-bits (our `addr` is 32-bits wide).
+
+To do this, let's quickly introduce an extend module.
+
+# Extend
+
+To perform sign extension, note that our value is in two's complement. We simply duplicate the MSB until we reach our expected bit width.
+
+```verilog
+module extend (
+  input logic [11:0] imm,
+  output logic [31:0] imm_ext
+);
+
+  assign imm_ext = { {20{imm[11]}}, imm };
+
+endmodule
+```
+
+I won't include the CocoTB test for this since it should be pretty self-explanatory. I'd rather focus on the ALU here.
+
+# Arithmetic Logic Unit
+
+The ALU is responsible for performing arithmetic and other computational operations and providing the output. The ALU is entirely combinational. Most ALUs to my knowledge follow a multiplexed approach, where the output is selected based on some control signal.
+
+```verilog
+module alu (
+  input logic [31:0] src_a,
+  input logic [31:0] src_b,
+  input logic [2:0] ctrl,
+  output logic [31:0] result
+);
+
+  always_comb begin : mux_alu
+    case (ctrl)
+      3'b000: result = src_a + src_b;
+      default: result = src_a - src_b;
+    endcase
+  end
+
+endmodule
+```
+
+> [!NOTE]
+> Currently, we just implement addition. We'll add more operations later.
+
+This is great! We now have the building blocks needed to calculate our `addr + offset`. Let's now complete this portion of the data path.
+
+<CodePair files={["riscv.sv", "test_riscv.py"]}>
+<CodeTab caption="The data path so far, with the extend unit and ALU between the register file and data memory.">
+
+```verilog
+module riscv (
+  input logic clk
+);
+  logic [31:0] pc_next, pc, instr, rs1_value, alu_result, read_data;
+  logic [31:0] imm_ext;
+
+  logic reg_file_WE = 1;
+  logic data_mem_WE = 0;
+
+  program_counter prog_counter ( .pc_next(pc_next), .pc(pc), .clk(clk) );
+  ins_mem ins_mem ( .A(pc), .RD(instr) );
+  reg_file reg_file (
+    .A1(instr[19:15]),
+    .A3(instr[11:7]),
+    .clk(clk),
+    .WE3(reg_file_WE),
+    .RD1(rs1_value),
+    .WD3(read_data)
+  );
+
+  extend ext (
+    .imm(instr[31:20]),
+    .imm_ext(imm_ext)
+  );
+
+  alu alu (
+    .src_a(rs1_value),
+    .src_b(imm_ext),
+    .ctrl(0),
+    .result(alu_result)
+  );
+
+  data_mem data_mem (
+    .clk(clk),
+    .WE(data_mem_WE),
+    .A(alu_result),
+    .WD(),
+    .RD(read_data)
+  );
+
+endmodule
+```
+
+</CodeTab>
+<CodeTab caption="Its cocotb test. Load lw x6, -4(x9) at word 1, put 0x2004 in x9 and 0xDEADBEEF at 0x2000, then check the ALU result and the loaded value after one clock edge.">
+
+```python
+async def load_program(dut, instructions: list[int], start: int = 0x0):
+    for i, instr in enumerate(instructions, start=start):
+        dut.ins_mem.mem[i].value = instr
+        await Timer(1, unit="ns")
+
+
+async def write_to_data_mem(dut, addr: int, value: int):
+    dut.data_mem.mem[(addr >> 2) & 0b111111].value = value
+    await Timer(1, unit="ns")
+
+
+@cocotb.test
+async def test_instruction_flow(dut):
+    await load_program(dut, [0xFFC4A303], start=0x1)
+    await write_to_data_mem(dut, 0x2000, 0xDEADBEEF)
+    dut.pc_next.value = 0x4
+    dut.reg_file.mem[0x9].value = 0x2004
+
+    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
+
+    assert dut.prog_counter.pc.value == 0x0
+    assert dut.reg_file.A1.value == 0x0
+    assert dut.reg_file.RD1.value == 0x0
+
+    await RisingEdge(dut.clk)
+    await Timer(1, unit="ns")
+
+    assert dut.reg_file.RD1.value == 0x2004
+    assert dut.alu_result.value == 0x2000
+
+    assert dut.read_data.value == 0xDEADBEEF
+
+    dut.reg_file.A2.value = 0x6
+    await RisingEdge(dut.clk)
+    await Timer(1, unit="ns")
+
+    assert dut.reg_file.RD2.value == 0xDEADBEEF
+```
+
+</CodeTab>
+</CodePair>
+
+<ZoomImage src={aluSchematic} alt="caption=Elaborated view on Vivado with the extend unit and ALU wired in." />
+
+Our `riscv` module (yes its just the data path still) has expanded a lot. The elaborated view above hopefully helps to understand what changed, but I'll describe it below:
+
+0. First, we sign extend our offset `imm` to 32-bits. The sign extended immediate and the address that was driven by the register file are now both inputs `src_a` and `src_b` on our ALU, which we've set to addition by tying its `ctrl` port to `0`.
+0. The ALU's `result` is the exact address we need to read from our data memory, so we drive it's address `A` port to `alu_result`.
+0. The data memory will then give us the value stored at said address (`alu_result`).
+0. Currently, we're executing a `lw` instruction, and we want to store this value into our destination `rd` register.
+0. We know, for `I`-type instructions, the `rd` register is the `instr[11:7]` bits. We can drive our register's file `A3` port to this value and drive its
+write enable `WE3` HIGH.
+
+The test bench waits for two rising edges, but the `lw` still takes one clock cycle. The first edge loads `0x4` into the PC. Everything between the PC and `read_data` is combinational, so the value settles before the next edge. The second edge writes `read_data` into `x6`. One cycle is the time between those two edges.
+
+<OneCycle caption="Edge 1 starts the lw by latching the PC. Edge 2 ends it by writing x6. The data path in between has no clock." />
+
+There are a few things I'd like to point out that might not be immediately obvious. First of all, is the `alu_result` 0x2000. Specifically what address
+this actually ends up reading from the data memory. The keen reader might've noticed that 0x2000 is far out of bounds of our 64 word data memory. So, why does it work?
+
+Well, remember, the data memory right shifts and takes the least-significant 6-bits to compute the specific address of the least-significant byte of our target word. This can actually be represented by the operation being performed in my `write_to_data_mem` function.
+
+This actually means that when `A = 0x2000`, `A[7:2] = 0x0`. So this is actually just going to read from data memory's address `0x0`. Try this for yourself!
+Open a Python REPL and run the following:
+
+```python
+>>> a = 0x2000
+>>> a
+8192
+>>>
+>>> (a >> 2) & 0b111111
+0
+```
+
+Oh, and 0xDEADBEEF is just so it's easy to read. It's a commonly chosen value because it stands out!

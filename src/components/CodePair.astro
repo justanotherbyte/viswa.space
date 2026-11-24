@@ -1,0 +1,77 @@
+---
+// Several code files in one figure, one shown at a time under file-name tabs.
+// Children are <CodeTab>s, in the same order as `files`.
+// The tab bar sticks under the navbar (4.5rem on phones, 4rem from md) while
+// the figure is on screen, so a long file can be swapped mid-scroll.
+// Without JS the tab bar stays hidden and the panels stack.
+interface Props {
+	files: string[];
+}
+const { files } = Astro.props;
+---
+
+<figure data-code-pair class="not-prose m-0 min-w-0 scroll-mt-[4.5rem] md:scroll-mt-16">
+	<div
+		role="tablist"
+		aria-label="Files"
+		hidden
+		class="sticky top-[4.5rem] z-10 flex overflow-x-auto border-b border-zinc-300 bg-white md:top-16 dark:border-white/10 dark:bg-zinc-900"
+	>
+		{
+			files.map((file, i) => (
+				<button
+					type="button"
+					role="tab"
+					aria-selected={i === 0 ? "true" : "false"}
+					tabindex={i === 0 ? 0 : -1}
+					class="-mb-px shrink-0 border-b-2 border-transparent px-3 py-2 text-xs text-zinc-500 duration-150 hover:text-zinc-800 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-500 aria-selected:border-blue-500 aria-selected:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200 dark:aria-selected:border-blue-400 dark:aria-selected:text-white"
+				>
+					{file}
+				</button>
+			))
+		}
+	</div>
+	<div class="grid gap-y-6">
+		<slot />
+	</div>
+</figure>
+
+<script>
+	for (const pair of document.querySelectorAll<HTMLElement>("[data-code-pair]")) {
+		const tablist = pair.querySelector<HTMLElement>('[role="tablist"]')!;
+		const tabs = [...tablist.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+		const panels = [...pair.querySelectorAll<HTMLElement>('[role="tabpanel"]')];
+
+		const select = (i: number, fromUser = true) => {
+			tabs.forEach((tab, j) => {
+				tab.setAttribute("aria-selected", String(i === j));
+				tab.tabIndex = i === j ? 0 : -1;
+			});
+			panels.forEach((panel, j) => (panel.hidden = i !== j));
+			if (!fromUser) return;
+			tabs[i].focus();
+			// Switching while the bar is stuck would drop the reader mid-file: jump to its top.
+			if (tablist.getBoundingClientRect().top > pair.getBoundingClientRect().top + 1)
+				pair.scrollIntoView({ block: "start" });
+		};
+
+		const base = crypto.randomUUID();
+		tabs.forEach((tab, i) => {
+			const id = `${base}-${i}`;
+			tab.id = `tab-${id}`;
+			panels[i].id = `panel-${id}`;
+			tab.setAttribute("aria-controls", panels[i].id);
+			panels[i].setAttribute("aria-labelledby", tab.id);
+			tab.addEventListener("click", () => select(i));
+			tab.addEventListener("keydown", (e) => {
+				const step = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
+				if (step) select((i + step + tabs.length) % tabs.length);
+				else if (e.key === "Home") select(0);
+				else if (e.key === "End") select(tabs.length - 1);
+			});
+		});
+
+		tablist.hidden = false;
+		select(0, false);
+	}
+</script>

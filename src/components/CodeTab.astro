@@ -1,0 +1,21 @@
+---
+// One file of a <CodePair>: a code block with an optional caption.
+interface Props {
+	caption?: string;
+}
+const { caption } = Astro.props;
+---
+
+<div
+	role="tabpanel"
+	class="min-w-0 [&>pre]:m-0 [&>pre]:min-w-0 [&>pre]:overflow-x-auto"
+>
+	<slot />
+	{
+		caption && (
+			<p class="mt-2 text-xs leading-relaxed text-pretty text-zinc-500 dark:text-zinc-400">
+				{caption}
+			</p>
+		)
+	}
+</div>

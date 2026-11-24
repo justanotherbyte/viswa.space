@@ -8,6 +8,14 @@
 
 body {
 	font-family: var(--font-jetbrains), monospace;
+	/* Short pages still push the footer to the bottom of the viewport. */
+	display: flex;
+	flex-direction: column;
+	min-height: 100dvh;
+}
+
+body > main {
+	flex: 1 0 auto;
 }
 
 /* A markdown image's figure shrinks to the image and centers. contain keeps a long

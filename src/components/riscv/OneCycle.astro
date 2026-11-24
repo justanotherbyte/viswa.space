@@ -1,0 +1,134 @@
+---
+// Timing diagram for the lw test bench. Edge 1 latches the PC, the data path
+// settles combinationally, edge 2 writes x6. Both edges bound one clock period.
+interface Props {
+	caption?: string;
+}
+const { caption } = Astro.props;
+
+const LABEL_W = 96;
+const END = 640;
+const E1 = 160; // first rising edge
+const E2 = 480; // second rising edge
+const HALF = (E2 - E1) / 2;
+const SETTLED = 360; // read_data is valid well before edge 2
+
+// clk: low, then high/low half periods starting at edge 1.
+const clk = `M${LABEL_W} 66 H${E1} V42 H${E1 + HALF} V66 H${E2} V42 H${END}`;
+
+// One bus segment as a hexagon, the usual waveform-viewer shape.
+const bus = (a: number, b: number, y: number) =>
+	`${a},${y} ${a + 5},${y - 11} ${b - 5},${y - 11} ${b},${y} ${b - 5},${y + 11} ${a + 5},${y + 11}`;
+
+type Seg = { a: number; b: number; text: string; tone?: 'muted' | 'accent' };
+const rows: { name: string; y: number; segs: Seg[] }[] = [
+	{
+		name: 'pc',
+		y: 104,
+		segs: [
+			{ a: LABEL_W, b: E1, text: '0x0' },
+			{ a: E1, b: END, text: '0x4', tone: 'accent' },
+		],
+	},
+	{
+		name: 'read_data',
+		y: 146,
+		segs: [
+			{ a: LABEL_W, b: E1, text: 'x', tone: 'muted' },
+			{ a: E1, b: SETTLED, text: 'settling', tone: 'muted' },
+			{ a: SETTLED, b: END, text: 'DEADBEEF' },
+		],
+	},
+	{
+		name: 'x6',
+		y: 188,
+		segs: [
+			{ a: LABEL_W, b: E2, text: '0x0' },
+			{ a: E2, b: END, text: 'DEADBEEF', tone: 'accent' },
+		],
+	},
+];
+
+const segClass = {
+	muted: 'fill-zinc-100 stroke-zinc-300 dark:fill-zinc-800 dark:stroke-zinc-600',
+	accent: 'fill-blue-500/15 stroke-blue-500 dark:fill-blue-400/15 dark:stroke-blue-400',
+	plain: 'fill-none stroke-zinc-400 dark:stroke-zinc-500',
+};
+const textClass = {
+	muted: 'fill-zinc-400 dark:fill-zinc-500',
+	accent: 'fill-blue-600 dark:fill-blue-300',
+	plain: 'fill-zinc-600 dark:fill-zinc-300',
+};
+---
+
+<figure class="cycle not-prose m-0">
+	<div class="cycle-scroll">
+		<svg
+			viewBox={`0 0 ${END} 262`}
+			role="img"
+			aria-label="Timing diagram. The first rising edge loads 0x4 into the PC. The data path settles and read_data becomes DEADBEEF. The second rising edge writes DEADBEEF into x6. Both edges bound one clock period, which is one instruction."
+			class="cycle-svg text-[13px]"
+		>
+			<g class="fill-zinc-500 dark:fill-zinc-400">
+				<text x="0" y="58">clk</text>
+				{rows.map((r) => <text x="0" y={r.y + 4}>{r.name}</text>)}
+			</g>
+
+			<g class="cycle-waves">
+				<path d={clk} class="fill-none stroke-zinc-500 dark:stroke-zinc-400" stroke-width="1.5" />
+
+				{
+					rows.map((r) =>
+						r.segs.map((s) => (
+							<g>
+								<polygon points={bus(s.a, s.b, r.y)} class={segClass[s.tone ?? 'plain']} />
+								<text x={(s.a + s.b) / 2} y={r.y + 4} text-anchor="middle" class={textClass[s.tone ?? 'plain']}>
+									{s.text}
+								</text>
+							</g>
+						)),
+					)
+				}
+
+				<g class="stroke-blue-500 dark:stroke-blue-400" stroke-dasharray="3 4">
+					<line x1={E1} y1="34" x2={E1} y2="206" />
+					<line x1={E2} y1="34" x2={E2} y2="206" />
+				</g>
+				<g class="fill-blue-600 dark:fill-blue-300 text-[12px]" text-anchor="middle">
+					<text x={E1} y="22">edge 1: PC ← 0x4</text>
+					<text x={E2} y="22">edge 2: x6 ← read_data</text>
+				</g>
+
+				<path
+					d={`M${E1} 222 v8 H${E2} v-8`}
+					class="fill-none stroke-zinc-500 dark:stroke-zinc-400"
+					stroke-width="1.5"
+				/>
+				<text x={(E1 + E2) / 2} y="252" text-anchor="middle" class="fill-zinc-700 dark:fill-zinc-200">
+					one clock period = one lw
+				</text>
+			</g>
+		</svg>
+	</div>
+	{
+		caption && (
+			<figcaption class="mt-2 text-xs leading-relaxed text-pretty text-zinc-500 dark:text-zinc-400">
+				{caption}
+			</figcaption>
+		)
+	}
+</figure>
+
+
+<style>
+	/* Keeps text readable on phones by scrolling instead of shrinking. */
+	.cycle-scroll {
+		overflow-x: auto;
+	}
+	.cycle-svg {
+		display: block;
+		width: 100%;
+		min-width: 34rem;
+		font-family: inherit;
+	}
+</style>

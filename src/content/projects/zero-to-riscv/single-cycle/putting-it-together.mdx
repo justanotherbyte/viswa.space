@@ -1,5 +1,5 @@
 ---
-title: "Putting the memories together"
+title: "The start of the data path"
 order: 5
 ---
 
@@ -14,7 +14,7 @@ Let's put the program counter and the memories together to begin processing our 
   <InstrFields />
 </Side>
 
-What does this instruction do? It loads a 32-bit word at address `x9 + (-4)` into `x6`. Let's think about what operations we'll need.
+What does this instruction do? It loads a 32-bit word at address `x9 + (-4)` from memory into `x6`. Let's think about what operations we'll need.
 
 0. Read instruction from instruction memory. This address will come from the program counter (PC).
 0. Extract the destination and source registers.
@@ -39,5 +39,45 @@ module riscv(
 endmodule
 ```
 
+> [!NOTE]
+> I've called this module riscv, but note this is really just the data path so far.
 
-<ZoomImage src={riscvSchematic} alt="caption=Elaborated view on Vivado" />
+<ZoomImage src={riscvSchematic} alt="caption=Elaborated view on Vivado. This is often great for helping visualize your RTL." />
+
+Let's trace through this with a CocoTB test bench.
+
+```python
+async def load_program(dut, instructions: list[int], start: int = 0x0):
+  for i, instr in enumerate(instructions, start=start):
+    dut.ins_mem.mem[i].value = instr
+    await Timer(1, unit="ns")
+
+@cocotb.test
+async def test_instruction_flow(dut):
+  await load_program(dut, [0xFFC4A303], start=0x1)
+  dut.pc_next.value = 0x4
+  dut.reg_file.mem[0x9].value = 0x2004
+
+  cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
+
+  assert dut.prog_counter.pc.value == 0x0
+  assert dut.reg_file.A1.value == 0x0
+  assert dut.reg_file.RD1.value == 0x0
+
+  await RisingEdge(dut.clk)
+  await Timer(1, unit="ns")
+
+  assert dut.reg_file.RD1.value == 0x2004
+```
+
+My `load_program` function is quite simple. But there's a few interesting points to talk about here in regards to byte and word addressing. I'm initially loading one instruction into the
+instruction memory at word address `0x1`. We set `pc_next == 0x4` because the instruction memory is [byte addressed](/projects/zero-to-riscv/single-cycle/instruction-memory) when being read.
+
+I've loaded an arbitrary value of `0x2004` into the `x9` register simply because it matches the arbitrary value in the book. Any 32-bit value would work here - I simply want to prove that a value is indeed being loaded from our `x9` register, i.e the `rs1` field in my instruction.
+
+The three asserts exist just to convince myself prove that the obvious is true. Before any clock cycle completes, the program counter would still output `0x0` (`pc_next` hasn't propagated to `pc` yet), and hence
+the instruction memory would still be combinationally reading from address `0x0`. The latter two asserts are just tracing along from this initial condition.
+
+We wait for a rising edge of the clock. We expect the hardware to load the 32-bit address stored in the register `x9` which is what happens!
+
+Logically, the next-step is to take this address and compute the actual address we need with our offset. For this, we'll need an Arithmetic Logic Unit (ALU), which we'll cover next.
