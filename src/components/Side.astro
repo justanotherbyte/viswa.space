@@ -8,7 +8,7 @@ const { caption } = Astro.props;
 ---
 
 <figure
-	class="m-0 grid min-w-0 grid-rows-[1fr_auto] md:row-span-2 md:grid-rows-subgrid [&>pre]:m-0 [&>pre]:min-w-0 [&>pre]:overflow-x-auto [&>pre>code]:h-full"
+	class="m-0 grid min-w-0 grid-rows-[1fr_auto] md:row-span-2 md:grid-rows-subgrid [&_pre]:m-0 [&_pre]:min-w-0 [&_pre]:overflow-x-auto [&_pre]:h-full [&_pre>code]:h-full"
 >
 	<slot />
 	{

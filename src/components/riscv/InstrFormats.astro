@@ -1,0 +1,162 @@
+---
+import { CAPTION_CLASS } from '../../lib/rehype-figures';
+
+// The six RV32I instruction formats on one 32-bit ruler. Columns line up, so the
+// reader sees rs1, rs2, funct3 and opcode never move and imm fills whatever is left.
+// Same field colours as InstrFields.
+interface Props {
+	highlight?: 'R' | 'I' | 'S' | 'B' | 'U' | 'J';
+	caption?: string;
+}
+const { highlight, caption } = Astro.props;
+
+const LABEL_W = 80;
+const BIT = 18;
+const TOP = 22; // bit-range labels
+const ROW_H = 40;
+const ROW_GAP = 10;
+const EX_GAP = 16;
+const x0 = LABEL_W;
+const bitsEnd = x0 + 32 * BIT;
+const width = bitsEnd + EX_GAP + 28;
+
+type Role = 'imm' | 'rs1' | 'rs2' | 'rd' | 'funct' | 'op';
+type F = [name: string, hi: number, lo: number, role: Role];
+const rs2: F = ['rs2', 24, 20, 'rs2'];
+const rs1: F = ['rs1', 19, 15, 'rs1'];
+const f3: F = ['funct3', 14, 12, 'funct'];
+const rd: F = ['rd', 11, 7, 'rd'];
+const op: F = ['opcode', 6, 0, 'op'];
+
+const rows: { type: NonNullable<Props['highlight']>; name: string; ex: string; fields: F[] }[] = [
+	{ type: 'R', name: 'register', ex: 'add', fields: [['funct7', 31, 25, 'funct'], rs2, rs1, f3, rd, op] },
+	{ type: 'I', name: 'immediate', ex: 'lw', fields: [['imm[11:0]', 31, 20, 'imm'], rs1, f3, rd, op] },
+	{ type: 'S', name: 'store', ex: 'sw', fields: [['imm[11:5]', 31, 25, 'imm'], rs2, rs1, f3, ['imm[4:0]', 11, 7, 'imm'], op] },
+	{ type: 'B', name: 'branch', ex: 'beq', fields: [['imm[12|10:5]', 31, 25, 'imm'], rs2, rs1, f3, ['imm[4:1|11]', 11, 7, 'imm'], op] },
+	{ type: 'U', name: 'upper imm', ex: 'lui', fields: [['imm[31:12]', 31, 12, 'imm'], rd, op] },
+	{ type: 'J', name: 'jump', ex: 'jal', fields: [['imm[20|10:1|11|19:12]', 31, 12, 'imm'], rd, op] },
+];
+
+// Full class strings so Tailwind sees every one.
+const palette: Record<Role, { cell: string; text: string }> = {
+	imm: {
+		cell: 'fill-blue-500/15 stroke-blue-500 dark:fill-blue-400/15 dark:stroke-blue-400',
+		text: 'fill-blue-700 dark:fill-blue-300',
+	},
+	rs1: {
+		cell: 'fill-emerald-500/15 stroke-emerald-500 dark:fill-emerald-400/15 dark:stroke-emerald-400',
+		text: 'fill-emerald-700 dark:fill-emerald-300',
+	},
+	rs2: {
+		cell: 'fill-cyan-500/15 stroke-cyan-500 dark:fill-cyan-400/15 dark:stroke-cyan-400',
+		text: 'fill-cyan-700 dark:fill-cyan-300',
+	},
+	funct: {
+		cell: 'fill-amber-500/15 stroke-amber-500 dark:fill-amber-400/15 dark:stroke-amber-400',
+		text: 'fill-amber-700 dark:fill-amber-300',
+	},
+	rd: {
+		cell: 'fill-violet-500/15 stroke-violet-500 dark:fill-violet-400/15 dark:stroke-violet-400',
+		text: 'fill-violet-700 dark:fill-violet-300',
+	},
+	op: {
+		cell: 'fill-rose-500/15 stroke-rose-500 dark:fill-rose-400/15 dark:stroke-rose-400',
+		text: 'fill-rose-700 dark:fill-rose-300',
+	},
+};
+
+const bx = (hi: number) => x0 + (31 - hi) * BIT;
+const rowY = (i: number) => TOP + i * (ROW_H + ROW_GAP);
+const height = rowY(rows.length) - ROW_GAP + 2;
+// Ruler boundaries: every field edge in the R row covers all six formats.
+const ruler = rows[0].fields.flatMap(([, hi, lo]) => [
+	{ x: bx(hi) + 3, n: hi, anchor: 'start' },
+	{ x: bx(lo) + BIT - 3, n: lo, anchor: 'end' },
+]);
+---
+
+<figure class="formats not-prose my-6">
+	<div class="overflow-x-auto [scrollbar-width:thin] [scrollbar-color:var(--color-zinc-400)_transparent] dark:[scrollbar-color:var(--color-zinc-600)_transparent]">
+		<svg
+			viewBox={`0 0 ${width} ${height}`}
+			role="img"
+			aria-labelledby="instr-formats-title instr-formats-desc"
+			class="block h-auto w-full min-w-[600px] font-[inherit] text-[12px]"
+		>
+			<title id="instr-formats-title">RISC-V instruction formats</title>
+			<desc id="instr-formats-desc">
+				All six RV32I formats share opcode in bits 6 to 0. R-type (register) does math on two registers: funct7, rs2, rs1, funct3, rd, opcode.
+				I-type (immediate) uses a register and a constant, and covers loads: imm[11:0], rs1, funct3, rd, opcode. S-type (store) writes a register to memory: imm[11:5], rs2, rs1, funct3, imm[4:0],
+				opcode. B-type (branch) compares two registers and jumps on the result: imm[12|10:5], rs2, rs1, funct3, imm[4:1|11], opcode. U-type (upper immediate) loads the top 20 bits of a register: imm[31:12], rd,
+				opcode. J-type (jump) jumps and saves the return address: imm[20|10:1|11|19:12], rd, opcode.
+			</desc>
+
+			{ruler.map((r) => (
+				<text x={r.x} y={TOP - 8} text-anchor={r.anchor} class="fill-zinc-500 text-[10px] tabular-nums">
+					{r.n}
+				</text>
+			))}
+
+			{
+				rows.map((row, i) => {
+					const y = rowY(i);
+					const on = row.type === highlight;
+					return (
+						<g>
+							{on && (
+								<rect
+									x={0}
+									y={y - 4}
+									width={width}
+									height={ROW_H + 8}
+									class="fill-zinc-100 dark:fill-zinc-800/70"
+								/>
+							)}
+							<text
+								x={8}
+								y={y + ROW_H / 2 - 2}
+								class:list={[
+									'font-semibold',
+									on ? 'fill-blue-600 dark:fill-blue-400' : 'fill-zinc-700 dark:fill-zinc-300',
+								]}
+							>
+								{row.type}-type
+							</text>
+							<text x={8} y={y + ROW_H / 2 + 14} class="fill-zinc-500 text-[10px] dark:fill-zinc-400">
+								{row.name}
+							</text>
+							{row.fields.map(([name, hi, lo, role]) => {
+								const c = palette[role];
+								const x = bx(hi);
+								const w = (hi - lo + 1) * BIT;
+								return (
+									<g>
+										<rect x={x + 1.5} y={y + 0.5} width={w - 3} height={ROW_H - 1} class={c.cell} />
+										<text
+											x={x + w / 2}
+											y={y + ROW_H / 2 + 4}
+											text-anchor="middle"
+											class:list={[c.text, name.length > 10 && 'text-[11px]']}
+										>
+											{name}
+										</text>
+									</g>
+								);
+							})}
+							<text x={bitsEnd + EX_GAP} y={y + ROW_H / 2 + 4} class="fill-zinc-500 dark:fill-zinc-400">
+								{row.ex}
+							</text>
+						</g>
+					);
+				})
+			}
+		</svg>
+	</div>
+	{
+		caption && (
+			<figcaption class={CAPTION_CLASS}>
+				{caption}
+			</figcaption>
+		)
+	}
+</figure>

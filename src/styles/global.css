@@ -174,3 +174,78 @@ a.link-chip:hover {
 		color: var(--color-zinc-600);
 	}
 }
+
+/* Diff code blocks (```lang diff, see src/lib/rehype-code-diff.ts and
+   CodeDiff.astro). Only changed lines show until a fold row is clicked; then
+   unchanged lines show dimmed and come back up on hover. */
+/* .hljs in the theme sets display: block on the code; out-rank it. */
+pre[data-diff] code.hljs {
+	display: grid;
+	grid-template-columns: minmax(100%, max-content);
+}
+
+.diff-line {
+	display: block;
+	position: relative;
+	margin-inline: -1em;
+	padding-inline: 1em;
+	transition: opacity 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.diff-line[hidden] {
+	display: none;
+}
+
+.diff-line[data-kind="."] {
+	opacity: 0.4;
+}
+
+/* Touch devices keep :hover after the tap that unfolds, which would undo the dim. */
+@media (hover: hover) {
+	pre[data-diff]:hover .diff-line[data-kind="."] {
+		opacity: 0.8;
+	}
+}
+
+.diff-line[data-kind="+"] {
+	background: color-mix(in oklab, var(--color-blue-500) 10%, transparent);
+}
+
+.diff-line[data-kind="-"] {
+	background: color-mix(in oklab, var(--color-red-500) 9%, transparent);
+	opacity: 0.6;
+}
+
+.diff-line[data-kind="+"]::before,
+.diff-line[data-kind="-"]::before {
+	position: absolute;
+	left: 0.3em;
+	content: attr(data-kind);
+	color: var(--color-blue-500);
+}
+
+.diff-line[data-kind="-"]::before {
+	color: var(--color-red-500);
+}
+
+.diff-fold {
+	display: block;
+	/* Bleed to the code's 1em padding, measured at this row's 0.75 size. */
+	margin-inline: calc(-1em / 0.75);
+	padding: 0.35em calc(1em / 0.75);
+	cursor: pointer;
+	text-align: left;
+	font: inherit;
+	font-size: 0.75rem;
+	color: var(--color-zinc-500);
+	background: color-mix(in oklab, var(--color-zinc-500) 8%, transparent);
+}
+
+.diff-fold:hover {
+	color: var(--color-blue-500);
+}
+
+.diff-fold:focus-visible {
+	outline: 2px solid var(--color-blue-500);
+	outline-offset: -2px;
+}

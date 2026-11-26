@@ -1,0 +1,159 @@
+---
+title: "Supporting S-type instructions"
+order: 7
+---
+
+import ZoomImage from '../../../../components/ZoomImage.astro';
+import InstrFormats from '../../../../components/riscv/InstrFormats.astro';
+import sTypeSchematic from '../../../../assets/articles/zero-to-riscv/s-type-schematic.png';
+
+So far, we've implemented support for I-type instructions. If you don't know the different types of RISC-V instructions yet, I've included a graphic below showing the various types.
+
+<InstrFormats highlight="S" caption="The six types of instructions in RV32I. opcode, rs1, rs2 and funct3 never move, so the decoder reads them before it knows the format. S-type has no rd, so rs2 takes its usual slot and the 12-bit immediate splits around it: imm[11:5] in the top seven bits, imm[4:0] where rd would be." />
+
+I personally encountered a few bugs when extending my data path to support S-type instructions. I'll walk through my process and some of the problems I encountered.
+
+Let's use the same instruction as the book to help us here: `sw x6, 8(x9)` or `0x006A423` or `000000 00110 01001 010 01000 0100011`. This instruction simply takes the value stored in `x6` and stores it into the address stored in `x9` offset by `+8`. A lot of the operations we need are already supported by our existing data path.
+
+# Extending the Extend block
+
+Previously, with our `lw x6, -4(x9)`, an I-type instruction, the immediate was stored in a fixed location, i.e bits `[31:20]`, however, in S-type instructions, the immediate value is split-up into `instr[31:25]` and `instr[11:7]`.
+An idea I had was to multiplex some control signal and control exactly which bits entered the extend block. This works, but the book actually moves this logic within the extend block itself, which is what we'll implement instead.
+
+```verilog
+module extend (
+  input logic [31:7] imm,
+  input logic imm_src,
+  output logic [31:0] imm_ext
+);
+
+  logic [11:0] chosen_imm;
+  assign chosen_imm = imm_src ? { imm[31:25], imm[11:7] } : imm[31:20];
+
+  assign imm_ext = { {20{chosen_imm[11]}}, chosen_imm };
+
+endmodule
+```
+
+We now have a 1-bit `imm_src` control signal that controls what bits we select. When `imm_src = 1`, we consider it to be an S-type instruction, hence we choose bits `[31:25] ++ [11:7]`, otherwise we consider it to be an I-type instruction and choose bits `[31:20]`.
+
+# Wiring up the data path
+
+Okay so what's next? We've figured out how to extract our immediate value from our instruction bits. Now we have to read the value stored in register `x6`. How? Do we need to adjust any other logic? How do we make sure my I-type instructions still work?
+
+```verilog diff
+module data_path(
+  input logic clk
+);
+  logic [31:0] pc_next, pc, instr, rs1_value, alu_result, read_data, write_data;
+  logic [31:0] imm_ext;
+
++  logic reg_file_WE = 1;
++  logic data_mem_WE = 0;
++  logic imm_src = 0;
+
+  program_counter prog_counter ( .pc_next(pc_next), .pc(pc), .clk(clk) );
+  ins_mem ins_mem ( .A(pc), .RD(instr) );
++  reg_file reg_file (
++    .A1(instr[19:15]),
++    .A2(instr[24:20]),
++    .A3(instr[11:7]),
++    .clk(clk),
++    .WE3(reg_file_WE),
++    .RD1(rs1_value),
++    .RD2(write_data),
++    .WD3(read_data)
++  );
+
+  extend ext (
+    .imm(instr[31:7]),
+    .imm_src(imm_src),
+    .imm_ext(imm_ext)
+  );
+
+  alu alu (
+    .src_a(rs1_value),
+    .src_b(imm_ext),
+    .ctrl(0),
+    .result(alu_result)
+  );
+
+  alu pc_alu (
+    .src_a(pc),
+    .src_b(4),
+    .result(pc_next)
+  );
+
+  data_mem data_mem (
+    .clk(clk),
+    .WE(data_mem_WE),
+    .A(alu_result),
+    .WD(write_data),
+    .RD(read_data)
+  );
+
+endmodule
+```
+
+> [!NOTE]
+> Note that I've renamed the `riscv` module to `data_path`. I think it's now a good time to start differentiating between the data path and control path.
+
+Well, notice that in I-type and S-type instructions, we always need the bits `[19:15]` as the/one of the source registers, and in particular is the one that's always fed into our offset ALU. This is already being done by our data path. In our S-type instruction, we need to read an additional source register `rs2`, which is in bits `[24:20]`.
+We drive our register file's `A2` port to this value, reading out the value stored on `RD2`. In S-type instructions, the value stored in `rs2` needs to be stored at the `address + offset` within our data memory. Hence, we connect this output to our data memory's `WD` port.
+
+Let's look at how we can adapt our instruction flow test for this new data path.
+
+```python diff
+@cocotb.test
+async def test_instruction_flow(dut):
+    # 0x1000: lw x6 -4(x9)
+    # 0x1004: sw x6, 8(x9)
++    await load_program(dut, [0xFFC4A303, 0x0064A423], start=0x1) # add the additional instruction to our instruction memory.
+    await write_to_data_mem(dut, 0x2000, 0xDEADBEEF)
+    dut.pc_next.value = 0x4
+    dut.reg_file.mem[0x9].value = 0x2004
+
+    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
+
+    assert dut.prog_counter.pc.value == 0x0
+    assert dut.reg_file.A1.value == 0x0
+    assert dut.reg_file.RD1.value == 0x0
+
+    await RisingEdge(dut.clk)
+    await Timer(1, unit="ns")
+
+    assert dut.reg_file.RD1.value == 0x2004
+    assert dut.alu_result.value == 0x2000
+
+    assert dut.read_data.value == 0xDEADBEEF
+
+    await RisingEdge(dut.clk)
+    await Timer(1, unit="ns")
+
+    assert dut.reg_file.mem[0x6].value == 0xDEADBEEF
+
++    dut.reg_file_WE.value = 0  # the sw instruction does not write to the register file.
++    dut.data_mem_WE.value = 1  # the sw instruction writes to data memory.
++    dut.imm_src.value = 1  # s-type immediate
+
++    await RisingEdge(dut.clk)
++    await Timer(1, unit="ns")
+
++    assert (
++        dut.data_mem.mem[(0x200C >> 2) & 0b111111].value == 0xDEADBEEF
++    )
+```
+
+Between the `lw` and `sw` instructions, we must update the control signals `reg_file_WE`, `data_mem_WE` and `imm_src`. These would normally be controlled by our *Control Unit*. I'll elaborate on this later, but for now we're going to emulate the behaviour of the control unit in the test.
+
+We expect the value that was stored in `x6` to now be in `value_stored_in(x9) + 8`. The previous instruction stored `0xDEADBEEF` into `x6`. We stored `0x2004` into `x9` at the beginning of the test, hence we expect `0xDEADBEEF` to be stored in data memory at the address `0x2004 + 8 = 0x200C`.
+
+<ZoomImage src={sTypeSchematic} alt="caption=Elaborated view on Vivado with data memory wired in for S-type instructions." />
+
+# Control Unit
+
+Previously I named our top level module `riscv` just for novelty. But now I think its a good idea to keep the data path separate from our control path/control unit. I realized early on that our signals like `reg_file_WE`, `data_mem_WE` and `imm_src` would need be controlled by a separate block of logic, i.e a control unit, but waited to formally
+mention it till now.
+
+So far, we've emulated a control unit in the test above. But our RV32I core will need an actual control unit to control these signals itself.
+

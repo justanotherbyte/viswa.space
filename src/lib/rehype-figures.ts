@@ -3,7 +3,7 @@
 // .img-figure (global.css) shrinks the figure to its image so the caption wraps at the image's edges.
 type El = { type: string; tagName?: string; value?: string; properties?: Record<string, unknown>; children?: El[] };
 
-export const CAPTION_CLASS = 'mt-2.5 max-w-[72ch] text-xs leading-relaxed text-pretty text-zinc-500 dark:text-zinc-400';
+export const CAPTION_CLASS = 'mt-2.5 text-xs leading-relaxed text-pretty text-zinc-500 dark:text-zinc-400';
 
 // Splits an alt like "caption=VEGA at sunset" into the alt to use and the caption to show.
 export function splitCaption(alt: string): { alt: string; caption?: string } {

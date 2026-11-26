@@ -1,0 +1,68 @@
+---
+// Renders <pre data-diff> blocks (src/lib/rehype-code-diff.ts) after highlight.js:
+// only changed lines show; each run of unchanged lines folds into a row, and clicking
+// any row unfolds the whole file with the unchanged lines dimmed. Place after hljs.highlightAll().
+---
+
+<script is:inline>
+	// Splits highlighted HTML into lines, closing and reopening spans that cross a newline.
+	const splitLines = (html) => {
+		const lines = [];
+		const open = [];
+		let cur = "";
+		for (const tok of html.split(/(<span[^>]*>|<\/span>|\n)/)) {
+			if (tok === "\n") {
+				lines.push(cur + "</span>".repeat(open.length));
+				cur = open.join("");
+				continue;
+			}
+			if (tok.startsWith("<span")) open.push(tok);
+			else if (tok === "</span>") open.pop();
+			cur += tok;
+		}
+		return [...lines, cur];
+	};
+
+	const render = () => {
+		for (const pre of document.querySelectorAll("pre[data-diff]")) {
+			const code = pre.querySelector("code");
+			const kinds = pre.dataset.diff;
+			// Copy the code as it is after the change.
+			pre.dataset.copy = code.textContent
+				.split("\n")
+				.filter((_, i) => kinds[i] !== "-")
+				.join("\n");
+			const lines = splitLines(code.innerHTML).map((html, i) => {
+				const line = document.createElement("span");
+				line.className = "diff-line";
+				line.dataset.kind = kinds[i];
+				line.innerHTML = html || " ";
+				line.hidden = kinds[i] === ".";
+				return line;
+			});
+			const folds = [];
+			const expand = () => {
+				lines.forEach((l) => (l.hidden = false));
+				folds.forEach((f) => f.remove());
+			};
+			code.replaceChildren();
+			lines.forEach((line, i) => {
+				if (line.hidden && !lines[i - 1]?.hidden) {
+					let n = 0;
+					while (lines[i + n]?.hidden) n++;
+					const fold = document.createElement("button");
+					fold.type = "button";
+					fold.className = "diff-fold";
+					fold.textContent = `${n} unchanged line${n > 1 ? "s" : ""}`;
+					fold.onclick = expand;
+					folds.push(fold);
+					code.append(fold);
+				}
+				code.append(line);
+			});
+		}
+	};
+	// hljs.highlightAll() defers to a window DOMContentLoaded listener; this one is added later, so it runs after.
+	if (document.readyState === "loading") window.addEventListener("DOMContentLoaded", render);
+	else render();
+</script>

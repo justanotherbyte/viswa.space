@@ -1,0 +1,29 @@
+---
+// Adds a copy button to the top-right of every <pre> on the page.
+const copy = '<rect x="9" y="9" width="12" height="12"/><path d="M5 15H3V3h12v2"/>';
+const check = '<path d="M5 12l5 5L20 7"/>';
+---
+
+<script define:vars={{ copy, check }}>
+	const svg = (d) =>
+		`<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+	for (const pre of document.querySelectorAll("pre")) {
+		// Wrap so the button stays put when the <pre> scrolls sideways.
+		const wrap = document.createElement("div");
+		wrap.className = "relative";
+		pre.replaceWith(wrap);
+		wrap.append(pre);
+		const btn = document.createElement("button");
+		btn.type = "button";
+		btn.ariaLabel = "Copy code";
+		btn.className =
+			"absolute top-2 right-2 p-1.5 cursor-pointer bg-zinc-200/80 text-zinc-600 hover:text-zinc-900 dark:bg-zinc-800/80 dark:text-zinc-400 dark:hover:text-zinc-100";
+		btn.innerHTML = svg(copy);
+		btn.onclick = async () => {
+			await navigator.clipboard.writeText(pre.dataset.copy ?? pre.innerText);
+			btn.innerHTML = svg(check);
+			setTimeout(() => (btn.innerHTML = svg(copy)), 1500);
+		};
+		wrap.append(btn);
+	}
+</script>
