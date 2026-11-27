@@ -1,0 +1,230 @@
+---
+title: "Supporting B-type instructions"
+order: 9
+---
+
+import ZoomImage from '../../../../components/ZoomImage.astro';
+import bTypeFormat from '../../../../assets/articles/zero-to-riscv/b-type-format.png';
+import bTypeSchematic from '../../../../assets/articles/zero-to-riscv/b-type-schematic.png';
+
+Adding support to our data path for B-type instructions doesn't require too many changes. Let's think about this logically. We know we'll need to control what value `pc_next` becomes instead of the normal `+4`, so we'll introduce a `pc_src` control signal.
+
+Something I've begun to do more of, is look at the official RISC-V documentation.
+
+<ZoomImage src={bTypeFormat} alt="caption=B-type instruction format from the official RISC-V spec." />
+
+One thing I noticed is how broken up the `imm` value is in the instruction bits. In B-type instructions, the immediate is 13-bits long. Looking at the RISC-V spec above, we can see that:
+
+- Bit 12 is at `instr[31]`
+- Bit 11 is at `instr[7]`
+- Bits 10:5 are at `instr[30:25]`
+- Bits 4:1 are at `instr[11:8]`
+
+Why no `imm[0]` bit? Well, for B-type instructions, their offset is always even, which means `imm[0]` always equals 0, so it'd be a waste to store it in the instruction itself.
+
+# Handling B-type immediate values
+
+This immediate format doesn't match any of the previous formats that we encountered. So we'll need to update our `extend` block. We now have 3 possible cases, one for I/S/B instruction types. So we need to add an additional bit
+to our `imm_src` control signal.
+
+```verilog
+module extend (
+  input logic [31:7] imm,
+  input logic [1:0] imm_src,
+  output logic [31:0] imm_ext
+);
+
+  always_comb begin : mux_imm_ext 
+    case (imm_src)
+      2'b00: imm_ext = { {20{imm[31]}}, imm[31:20] }; // I-type
+      2'b01: imm_ext = { {20{imm[31]}}, imm[31:25], imm[11:7] }; // S-type
+      2'b10: imm_ext = { {20{imm[31]}}, imm[7], imm[30:25], imm[11:8], 1'b0 }; // B-type
+      default: imm_ext = 'x; // don't care
+    endcase
+  end
+
+endmodule
+```
+
+# Wiring up the data path
+
+Not too many changes are required here. We simply introduce our `pc_src` control signal and edit our `imm_src` control signal. We also introduce another adder ALU to compute a target PC address.
+
+```verilog diff
+module data_path(
+  input logic clk
+);
++  logic [31:0] pc_next, pc, pc_plus_4, pc_target, instr, rs1_value, alu_result, read_data, write_data, result, src_b;
+  logic [31:0] imm_ext;
+
+-  logic reg_file_WE = 1;
+-  logic data_mem_WE = 0;
++  logic [1:0] imm_src = 0;
+-  logic result_src = 1;
+-  logic alu_src = 1;
+-  logic [2:0] alu_ctrl = 3'b000;
++  logic pc_src = 0;
+
++  assign pc_next = pc_src ? pc_target : pc_plus_4;
+
+  program_counter prog_counter ( .pc_next(pc_next), .pc(pc), .clk(clk) );
+  ins_mem ins_mem ( .A(pc), .RD(instr) );
+
+  assign result = result_src ? read_data : alu_result;
+
+  reg_file reg_file (
+    .A1(instr[19:15]),
+    .A2(instr[24:20]),
+    .A3(instr[11:7]),
+    .clk(clk),
+    .WE3(reg_file_WE),
+    .RD1(rs1_value),
+    .RD2(write_data),
+    .WD3(result)
+  );
+
+  extend ext (
+    .imm(instr[31:7]),
+    .imm_src(imm_src),
+    .imm_ext(imm_ext)
+  );
+
+  assign src_b = alu_src ? imm_ext : write_data;
+
+  alu alu (
+    .src_a(rs1_value),
+    .src_b(src_b),
+    .ctrl(alu_ctrl),
+    .result(alu_result)
+  );
+
+-  alu pc_alu (
+-    .src_a(pc),
+-    .src_b(4),
++    .result(pc_plus_4)
+-  );
+
++  alu pc_branch_alu (
++    .src_a(pc),
++    .src_b(imm_ext),
++    .ctrl(3'b000),
++    .result(pc_target)
++  );
+
+  data_mem data_mem (
+    .clk(clk),
+    .WE(data_mem_WE),
+    .A(alu_result),
+    .WD(write_data),
+    .RD(read_data)
+  );
+
+endmodule
+```
+
+
+```python diff
+-PROGRAM = [
+-    0xFFC4A303,  # lw x6 -4(x9) (0x1000)
+-    0x0064A423,  # sw x6, 8(x9) (0x1004)
+-    0x0062E233,  # or x4, x5, x6 (0x1008),
++    0x00000463,  # beq x0, x0 +8 (0x100C),
++    0x02A00213,  # addi x4, x0, 42
++    0x00300113,  # addi x2, x0, 3
+-]
+
+
+-@cocotb.test
+-async def test_instruction_flow(dut):
+-    await load_program(dut, PROGRAM, start=0x1)
+-    await write_to_data_mem(dut, 0x2000, 0xDEADBEEF)
+
+    dut.pc_next.value = 0x4
+    dut.reg_file.mem[0x9].value = 0x2004
+    dut.reg_file.mem[0x5].value = 0xCAFEBABE
+
+    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
+
+    assert dut.prog_counter.pc.value == 0x0
+    assert dut.reg_file.A1.value == 0x0
+    assert dut.reg_file.RD1.value == 0x0
+
+    await RisingEdge(dut.clk)
+    await Timer(1, unit="ns")
+
+    assert dut.reg_file.RD1.value == 0x2004
+    assert dut.alu_result.value == 0x2000
+
+    assert dut.read_data.value == 0xDEADBEEF
+
+    await RisingEdge(dut.clk)
+    await Timer(1, unit="ns")
+
+    assert dut.reg_file.mem[0x6].value == 0xDEADBEEF
+
+    dut.reg_file_WE.value = 0  # the sw instruction does not write to the register file.
+    dut.data_mem_WE.value = 1  # the sw instruction writes to data memory.
+    dut.imm_src.value = 0b01  # s-type immediate
+
+    await RisingEdge(dut.clk)
+    await Timer(1, unit="ns")
+
+    assert (
+        dut.data_mem.mem[(0x200C >> 2) & 0b111111].value == 0xDEADBEEF
+    )  # 0x200C comes from 0x2004 + 8
+
+    dut.result_src.value = 0
+    dut.alu_src.value = 0
+    dut.data_mem_WE.value = 0
+    dut.reg_file_WE.value = 1
+    dut.alu_ctrl.value = 0b011
+
+    await RisingEdge(dut.clk)
+    await Timer(1, unit="ns")
+
+    assert dut.reg_file.mem[0x4].value == 0xCAFEBABE | 0xDEADBEEF
+
+-    # The or x4, x5, x6 instruction has just finished here
+
++    dut.pc_src.value = 1
++    dut.imm_src.value = 0b10
++    dut.data_mem_WE.value = 0
++    dut.reg_file_WE.value = 1
++    dut.alu_ctrl.value = 0b001
++
++    await RisingEdge(dut.clk)
++    await Timer(1, unit="ns")
++
++    assert dut.reg_file.mem[0x4].value != 42
++    assert dut.reg_file.mem[0x4].value == 0xCAFEBABE | 0xDEADBEEF
+
++    dut.reg_file_WE.value = 1
++    dut.data_mem_WE.value = 0
++    dut.pc_src.value = 0
++    dut.alu_src.value = 1
++    dut.alu_ctrl.value = 0b000
++    dut.imm_src.value = 0b00``
+
++    await RisingEdge(dut.clk)
++    await Timer(1, unit="ns")
+
++    assert dut.reg_file.mem[0x2].value == 3
++    assert dut.alu.zero.value == 1
+```
+
+Let's look at the additions made to our `instruction_flow` test here. After the `or` instruction finishes, we need to now emulate a control unit to adjust our control signals for our branch instruction:
+
+- Branch instructions need to set the next PC address, and they do this via `pc_target`, which is multiplexed and controlled by setting `pc_src = 1`.
+- `beq` checks to see if both values in the two source registers are equal. It does this by performing a subtraction with the ALU and checking if the result is 0, hence, we set `alu_ctrl = 001`.
+- We set `alu_src = 0` because `beq` checks two *registers* for equality, hence, setting it to 0 chooses `reg_file.RD2` to read from rather than the immediate value.
+- B-type instructions need `imm_src = 10` to extract its immediate value.
+
+I've set our `beq` instruction to jump by `+8` if `x0 == x0` which is obviously true! Hence, we skip the `addi x4, x0, 42` instruction and jump straight to the `addi x2, x0, 3`. Why 8? This should be self-explanatory by now, but remember the instruction memory byte addressed not word-addressed. Adding 8 bytes means we skip forward two words, hence two instructions.
+
+My test checks to see if `x4` holds 42 or not and if the value changed at all. If the value hasn't changed and it doesn't store 42, we know that the `beq` instruction successfully executed.
+
+We also write some additional logic to see if the final instruction executed, i.e, does `x2 = 0 + 3 = 3`.
+
+
+<ZoomImage src={bTypeSchematic} alt="caption=Elaborated view on Vivado with pc_branch_alu wired in for B-type instructions." />
+
