@@ -1,5 +1,5 @@
 // A fenced block whose meta has `diff` (```verilog diff) marks changed lines with a
-// leading "+" (added) or "-" (removed). The marker is stripped so highlight.js sees
+// leading "+" (added) or "-" (dimmed context, shown but not a removal). The marker is stripped so highlight.js sees
 // plain code, and <pre data-diff> keeps one char per line: "+", "-" or ".".
 // CodeDiff.astro reads it after highlighting to dim and fold the unchanged lines.
 type El = { type: string; tagName?: string; value?: string; data?: { meta?: string }; properties?: Record<string, unknown>; children?: El[] };

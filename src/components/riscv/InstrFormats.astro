@@ -7,8 +7,12 @@ import { CAPTION_CLASS } from '../../lib/rehype-figures';
 interface Props {
 	highlight?: 'R' | 'I' | 'S' | 'B' | 'U' | 'J';
 	caption?: string;
+	// Show only the highlighted row, with the full table behind an expand toggle.
+	collapsed?: boolean;
+	// Internal: render the bare SVG ('row' = highlighted row only) without the figure.
+	bare?: 'row' | 'all';
 }
-const { highlight, caption } = Astro.props;
+const { highlight, caption, collapsed, bare } = Astro.props;
 
 const LABEL_W = 80;
 const BIT = 18;
@@ -36,6 +40,8 @@ const rows: { type: NonNullable<Props['highlight']>; name: string; ex: string; f
 	{ type: 'U', name: 'upper imm', ex: 'lui', fields: [['imm[31:12]', 31, 12, 'imm'], rd, op] },
 	{ type: 'J', name: 'jump', ex: 'jal', fields: [['imm[20|10:1|11|19:12]', 31, 12, 'imm'], rd, op] },
 ];
+
+const shown = bare === 'row' ? rows.filter((r) => r.type === highlight) : rows;
 
 // Full class strings so Tailwind sees every one.
 const palette: Record<Role, { cell: string; text: string }> = {
@@ -67,29 +73,35 @@ const palette: Record<Role, { cell: string; text: string }> = {
 
 const bx = (hi: number) => x0 + (31 - hi) * BIT;
 const rowY = (i: number) => TOP + i * (ROW_H + ROW_GAP);
-const height = rowY(rows.length) - ROW_GAP + 2;
+const height = rowY(shown.length) - ROW_GAP + 2;
 // Ruler boundaries: every field edge in the R row covers all six formats.
-const ruler = rows[0].fields.flatMap(([, hi, lo]) => [
+const ruler = shown[0].fields.flatMap(([, hi, lo]) => [
 	{ x: bx(hi) + 3, n: hi, anchor: 'start' },
 	{ x: bx(lo) + BIT - 3, n: lo, anchor: 'end' },
 ]);
 ---
 
-<figure class="formats not-prose my-6">
+{bare ? (
 	<div class="overflow-x-auto [scrollbar-width:thin] [scrollbar-color:var(--color-zinc-400)_transparent] dark:[scrollbar-color:var(--color-zinc-600)_transparent]">
 		<svg
 			viewBox={`0 0 ${width} ${height}`}
 			role="img"
-			aria-labelledby="instr-formats-title instr-formats-desc"
+			aria-labelledby={bare === 'row' ? `instr-formats-title-${highlight}` : 'instr-formats-title instr-formats-desc'}
 			class="block h-auto w-full min-w-[600px] font-[inherit] text-[12px]"
 		>
-			<title id="instr-formats-title">RISC-V instruction formats</title>
-			<desc id="instr-formats-desc">
+			{bare === 'row' ? (
+				<title id={`instr-formats-title-${highlight}`}>
+					{shown[0].type}-type ({shown[0].name}) format: {shown[0].fields.map(([n]) => n).join(', ')}
+				</title>
+			) : (
+				<title id="instr-formats-title">RISC-V instruction formats</title>
+			)}
+			{bare !== 'row' && <desc id="instr-formats-desc">
 				All six RV32I formats share opcode in bits 6 to 0. R-type (register) does math on two registers: funct7, rs2, rs1, funct3, rd, opcode.
 				I-type (immediate) uses a register and a constant, and covers loads: imm[11:0], rs1, funct3, rd, opcode. S-type (store) writes a register to memory: imm[11:5], rs2, rs1, funct3, imm[4:0],
 				opcode. B-type (branch) compares two registers and jumps on the result: imm[12|10:5], rs2, rs1, funct3, imm[4:1|11], opcode. U-type (upper immediate) loads the top 20 bits of a register: imm[31:12], rd,
 				opcode. J-type (jump) jumps and saves the return address: imm[20|10:1|11|19:12], rd, opcode.
-			</desc>
+			</desc>}
 
 			{ruler.map((r) => (
 				<text x={r.x} y={TOP - 8} text-anchor={r.anchor} class="fill-zinc-500 text-[10px] tabular-nums">
@@ -98,9 +110,9 @@ const ruler = rows[0].fields.flatMap(([, hi, lo]) => [
 			))}
 
 			{
-				rows.map((row, i) => {
+				shown.map((row, i) => {
 					const y = rowY(i);
-					const on = row.type === highlight;
+					const on = row.type === highlight && bare !== 'row';
 					return (
 						<g>
 							{on && (
@@ -152,11 +164,31 @@ const ruler = rows[0].fields.flatMap(([, hi, lo]) => [
 			}
 		</svg>
 	</div>
-	{
-		caption && (
-			<figcaption class={CAPTION_CLASS}>
-				{caption}
-			</figcaption>
-		)
-	}
-</figure>
+) : (
+	<figure class="formats group/formats not-prose my-6">
+		{collapsed ? (
+			<>
+				<div class="group-has-[details[open]]/formats:hidden">
+					<Astro.self highlight={highlight} bare="row" />
+				</div>
+				<details class="mt-2">
+					<summary class="cursor-pointer text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white">
+						Show all six formats
+					</summary>
+					<div class="mt-2">
+						<Astro.self highlight={highlight} bare="all" />
+					</div>
+				</details>
+			</>
+		) : (
+			<Astro.self highlight={highlight} bare="all" />
+		)}
+		{
+			caption && (
+				<figcaption class={CAPTION_CLASS}>
+					{caption}
+				</figcaption>
+			)
+		}
+	</figure>
+)}

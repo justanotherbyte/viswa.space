@@ -211,21 +211,16 @@ pre[data-diff] code.hljs {
 	background: color-mix(in oklab, var(--color-blue-500) 10%, transparent);
 }
 
+/* "-" marks a dimmed context line, not a removal: no tint, no marker. */
 .diff-line[data-kind="-"] {
-	background: color-mix(in oklab, var(--color-red-500) 9%, transparent);
-	opacity: 0.6;
+	opacity: 0.35;
 }
 
-.diff-line[data-kind="+"]::before,
-.diff-line[data-kind="-"]::before {
+.diff-line[data-kind="+"]::before {
 	position: absolute;
 	left: 0.3em;
 	content: attr(data-kind);
 	color: var(--color-blue-500);
-}
-
-.diff-line[data-kind="-"]::before {
-	color: var(--color-red-500);
 }
 
 .diff-fold {

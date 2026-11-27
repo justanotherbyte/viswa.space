@@ -1,0 +1,181 @@
+---
+title: "Supporting R-type instructions"
+order: 8
+---
+
+import InstrFormats from '../../../../components/riscv/InstrFormats.astro';
+import CodePair from '../../../../components/CodePair.astro';
+import CodeTab from '../../../../components/CodeTab.astro';
+
+Register-type instructions, aka `R-type` instructions, are instructions that contain two source registers, perform an operation and write the result to another register. No immediate values involved.
+
+<InstrFormats highlight="R" collapsed caption="R-type packs two source registers, rs1 and rs2, and a destination rd. funct7 and funct3 together pick the operation, so there are no immediate bits." />
+
+Supporting R-type instructions is actually pretty straight-forward. The work we did implementing support for I-type and S-type instructions means we already have pretty much all the building blocks needed.
+
+# Implementing remaining ALU operations
+
+I only ever implemented the basic add operation into my ALU. I'm sure this is self-explanatory so I'll just drop my RTL here:
+
+```verilog
+module alu (
+  input logic [31:0] src_a,
+  input logic [31:0] src_b,
+  input logic [2:0] ctrl,
+  output logic [31:0] result
+);
+
+  logic [31:0] diff;
+  assign diff = src_a - src_b;
+
+  always_comb begin : mux_alu
+    case (ctrl)
+      3'b000: result = src_a + src_b;
+      3'b001: result = src_a - src_b;
+      3'b010: result = src_a & src_b;
+      3'b011: result = src_a | src_b;
+      3'b101: result = (src_a[31] != src_b[31]) ? { 31'b0, src_a[31] } : { 31'b0, diff[31] };
+      default: result = 32'b0;
+    endcase
+  end
+
+endmodule
+```
+
+# Data Path changes
+
+Not many changes to the data path are required to support R-type instructions! WE simply introduce two new control signals to multiplex between some buses.
+
+1. `alu_src` - Previously our ALU only accepted immediate values from our `extend` block. R-type instructions obviously need to perform operations on the values in two registers, so we introduce a multiplexer to choose between our extended immediate `imm_ext` and the 2nd register read from `RD2`.
+2. `result_src` - For instructions like `lw`, we read from data memory and write the result back to a register in the register file, however, for R-type operations, we don't read from data memory at all, we have to write the ALU result directly to the register file. This is where `result_src` comes in, multiplexing between `alu_result` and `read_data`.
+
+<CodePair files={["riscv.sv", "test_riscv.py"]}>
+<CodeTab>
+
+```verilog diff
+module data_path(
+  input logic clk
+);
+  logic [31:0] pc_next, pc, instr, rs1_value, alu_result, read_data, write_data, result, src_b;
+  logic [31:0] imm_ext;
+
+-  logic reg_file_WE = 1;
+-  logic data_mem_WE = 0;
+-  logic imm_src = 0;
++  logic result_src = 1;
++  logic alu_src = 1;
++  logic [2:0] alu_ctrl = 3'b000;
+
+  program_counter prog_counter ( .pc_next(pc_next), .pc(pc), .clk(clk) );
+  ins_mem ins_mem ( .A(pc), .RD(instr) );
+
++  assign result = result_src ? read_data : alu_result;
+
+-  reg_file reg_file (
+-    .A1(instr[19:15]),
+-    .A2(instr[24:20]),
+-    .A3(instr[11:7]),
+-    .clk(clk),
+-    .WE3(reg_file_WE),
+-    .RD1(rs1_value),
+-    .RD2(write_data),
++    .WD3(result)
+  );
+
+  extend ext (
+    .imm(instr[31:7]),
+    .imm_src(imm_src),
+    .imm_ext(imm_ext)
+  );
+
++  assign src_b = alu_src ? imm_ext : write_data;
+
+-  alu alu (
+-    .src_a(rs1_value),
++    .src_b(src_b),
+-    .ctrl(alu_ctrl),
+-    .result(alu_result)
+-  );
+
+  alu pc_alu (
+    .src_a(pc),
+    .src_b(4),
+    .result(pc_next)
+  );
+
+  data_mem data_mem (
+    .clk(clk),
+    .WE(data_mem_WE),
+    .A(alu_result),
+    .WD(write_data),
+    .RD(read_data)
+  );
+
+endmodule
+```
+
+</CodeTab>
+<CodeTab>
+
+```python
+PROGRAM = [
+    0xFFC4A303,  # lw x6 -4(x9) (0x1000)
+    0x0064A423,  # sw x6, 8(x9) (0x1004)
+    0x0062E233,  # or x4, x5, x6 (0x1008)
+]
+
+
+@cocotb.test
+async def test_instruction_flow(dut):
+    await load_program(dut, PROGRAM, start=0x1)
+    await write_to_data_mem(dut, 0x2000, 0xDEADBEEF)
+
+    dut.pc_next.value = 0x4
+    dut.reg_file.mem[0x9].value = 0x2004
+    dut.reg_file.mem[0x5].value = 0xCAFEBABE
+
+    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
+
+    assert dut.prog_counter.pc.value == 0x0
+    assert dut.reg_file.A1.value == 0x0
+    assert dut.reg_file.RD1.value == 0x0
+
+    await RisingEdge(dut.clk)
+    await Timer(1, unit="ns")
+
+    assert dut.reg_file.RD1.value == 0x2004
+    assert dut.alu_result.value == 0x2000
+
+    assert dut.read_data.value == 0xDEADBEEF
+
+    await RisingEdge(dut.clk)
+    await Timer(1, unit="ns")
+
+    assert dut.reg_file.mem[0x6].value == 0xDEADBEEF
+
+    dut.reg_file_WE.value = 0  # the sw instruction does not write to the register file.
+    dut.data_mem_WE.value = 1  # the sw instruction writes to data memory.
+    dut.imm_src.value = 1  # s-type immediate
+
+    await RisingEdge(dut.clk)
+    await Timer(1, unit="ns")
+
+    assert (
+        dut.data_mem.mem[(0x200C >> 2) & 0b111111].value == 0xDEADBEEF
+    )  # 0x200C comes from 0x2004 + 8
+
+    dut.result_src.value = 0
+    dut.alu_src.value = 0
+    dut.data_mem_WE.value = 0
+    dut.reg_file_WE.value = 1
+    dut.alu_ctrl.value = 0b011
+
+    await RisingEdge(dut.clk)
+    await Timer(1, unit="ns")
+
+    assert dut.reg_file.mem[0x4].value == 0xCAFEBABE | 0xDEADBEEF
+
+```
+
+</CodeTab>
+</CodePair>
